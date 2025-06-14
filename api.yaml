@@ -1,0 +1,362 @@
+openapi: 3.0.4
+info:
+  title: GIF Manager API
+  description: |-
+    A RESTful API for managing user's saved GIFs. This API allows users to save, retrieve, update, and delete GIFs with authentication required for all operations.
+    
+    ## Authentication
+    All endpoints require authentication via JWT token passed in the Authorization header as Bearer token.
+    
+    ## Features
+    - Save GIFs with metadata (title, URL, preview, tags, caption)
+    - Retrieve user's saved GIFs
+    - Delete saved GIFs
+    - Update GIF captions
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@gifmanager.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000/api/gifs
+    description: Development server
+  - url: https://api.gifmanager.com/gifs
+    description: Production server
+
+tags:
+  - name: gifs
+    description: Operations for managing saved GIFs
+
+paths:
+  /save:
+    post:
+      tags:
+        - gifs
+      summary: Save a new GIF
+      description: Save a GIF to the user's collection with metadata including title, URL, preview, tags, and caption.
+      operationId: saveGif
+      requestBody:
+        description: GIF data to be saved
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveGifRequest'
+            example:
+              id: "gif_12345"
+              title: "Funny Cat GIF"
+              url: "https://media.giphy.com/media/abc123/giphy.gif"
+              preview: "https://media.giphy.com/media/abc123/200w.gif"
+              tags: ["cat", "funny", "pets"]
+              caption: "My favorite cat gif!"
+      responses:
+        '201':
+          description: GIF successfully saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveGifResponse'
+        '400':
+          description: Invalid input or failed to save GIF
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearerAuth: []
+
+  /user/{userId}:
+    get:
+      tags:
+        - gifs
+      summary: Get user's saved GIFs
+      description: Retrieve all GIFs saved by the authenticated user. Users can only access their own GIFs.
+      operationId: getUserGifs
+      parameters:
+        - name: userId
+          in: path
+          description: User ID (email) to fetch GIFs for
+          required: true
+          schema:
+            type: string
+            format: email
+          example: "user@example.com"
+      responses:
+        '200':
+          description: Successfully retrieved user's GIFs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserGifsResponse'
+        '403':
+          description: Forbidden - User can only access their own GIFs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to fetch GIFs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearerAuth: []
+
+  /{id}:
+    delete:
+      tags:
+        - gifs
+      summary: Delete a saved GIF
+      description: Delete a GIF from the user's collection. Users can only delete their own GIFs.
+      operationId: deleteGif
+      parameters:
+        - name: id
+          in: path
+          description: ID of the GIF to delete
+          required: true
+          schema:
+            type: string
+          example: "gif_12345"
+      responses:
+        '204':
+          description: GIF successfully deleted
+        '404':
+          description: GIF not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - User can only delete their own GIFs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to delete GIF
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearerAuth: []
+
+  /{id}/caption:
+    put:
+      tags:
+        - gifs
+      summary: Update GIF caption
+      description: Update the caption of a saved GIF. Users can only update captions for their own GIFs.
+      operationId: updateGifCaption
+      parameters:
+        - name: id
+          in: path
+          description: ID of the GIF to update
+          required: true
+          schema:
+            type: string
+          example: "gif_12345"
+      requestBody:
+        description: New caption for the GIF
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCaptionRequest'
+            example:
+              caption: "Updated caption for my favorite GIF"
+      responses:
+        '200':
+          description: Caption successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid input or failed to update caption
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: GIF not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - User can only update their own GIFs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearerAuth: []
+
+components:
+  schemas:
+    Gif:
+      type: object
+      required:
+        - id
+        - title
+        - url
+        - preview
+        - userId
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the GIF
+          example: "gif_12345"
+        title:
+          type: string
+          description: Title of the GIF
+          example: "Funny Cat GIF"
+        url:
+          type: string
+          format: uri
+          description: Full URL of the GIF
+          example: "https://media.giphy.com/media/abc123/giphy.gif"
+        preview:
+          type: string
+          format: uri
+          description: Preview/thumbnail URL of the GIF
+          example: "https://media.giphy.com/media/abc123/200w.gif"
+        userId:
+          type: string
+          format: email
+          description: Email of the user who saved the GIF
+          example: "user@example.com"
+        tags:
+          type: array
+          description: Array of tags associated with the GIF
+          items:
+            type: string
+          example: ["cat", "funny", "pets"]
+        caption:
+          type: string
+          description: User-provided caption for the GIF
+          example: "My favorite cat gif!"
+
+    SaveGifRequest:
+      type: object
+      required:
+        - id
+        - title
+        - url
+        - preview
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the GIF
+          example: "gif_12345"
+        title:
+          type: string
+          description: Title of the GIF
+          example: "Funny Cat GIF"
+        url:
+          type: string
+          format: uri
+          description: Full URL of the GIF
+          example: "https://media.giphy.com/media/abc123/giphy.gif"
+        preview:
+          type: string
+          format: uri
+          description: Preview/thumbnail URL of the GIF
+          example: "https://media.giphy.com/media/abc123/200w.gif"
+        tags:
+          type: array
+          description: Array of tags associated with the GIF
+          items:
+            type: string
+          example: ["cat", "funny", "pets"]
+        caption:
+          type: string
+          description: User-provided caption for the GIF
+          example: "My favorite cat gif!"
+
+    SaveGifResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        gif:
+          $ref: '#/components/schemas/Gif'
+
+    GetUserGifsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        gifs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Gif'
+
+    UpdateCaptionRequest:
+      type: object
+      required:
+        - caption
+      properties:
+        caption:
+          type: string
+          description: New caption for the GIF
+          example: "Updated caption for my favorite GIF"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "Failed to save GIF"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication. Include the token in the Authorization header as 'Bearer {token}'
+
+security:
+  - bearerAuth: []

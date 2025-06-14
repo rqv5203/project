@@ -1,0 +1,29 @@
+{
+  "common": {
+    "language": "Language",
+    "english": "English",
+    "spanish": "Spanish",
+    "signIn": "Sign in with Social Media",
+    "signInWithGoogle": "Sign in with Google",
+    "signInWithLinkedIn": "Sign in with LinkedIn",
+    "signOut": "Sign Out",
+    "welcome": "Welcome",
+    "email": "Email",
+    "search": "Search",
+    "create": "Create",
+    "dashboard": "Dashboard",
+    "delete": "Delete",
+    "save": "Save",
+    "loading": "Loading...",
+    "remove": "Remove"
+  },
+  "dashboard": {
+    "searchAndShare": "Search and Share GIFs"
+  },
+  "create": {
+    "savedGifs": "Your Saved GIFs",
+    "addCaption": "Add Caption",
+    "enterCaption": "Enter your caption...",
+    "saveCaption": "Save Caption"
+  }
+} 

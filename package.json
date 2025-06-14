@@ -1,0 +1,47 @@
+{
+  "name": "assignments",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --coverage",
+    "test:backend": "jest --coverage --selectProjects backend",
+    "test:frontend": "jest --coverage --selectProjects frontend",
+    "test:all": "jest --coverage",
+    "test:watch": "jest --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rqv5203/assignments.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rqv5203/assignments/issues"
+  },
+  "homepage": "https://github.com/rqv5203/assignments#readme",
+  "dependencies": {
+    "@types/cors": "^2.8.18",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "google-auth-library": "^9.15.1",
+    "mongodb": "^6.16.0"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-react": "^7.26.3",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "babel-jest": "^30.0.0",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^30.0.0",
+    "jest-environment-jsdom": "^30.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "supertest": "^6.3.3"
+  }
+}

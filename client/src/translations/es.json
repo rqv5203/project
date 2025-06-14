@@ -1,0 +1,29 @@
+{
+  "common": {
+    "language": "Idioma",
+    "english": "Inglés",
+    "spanish": "Español",
+    "signIn": "Iniciar sesión con redes sociales",
+    "signInWithGoogle": "Iniciar sesión con Google",
+    "signInWithLinkedIn": "Iniciar sesión con LinkedIn",
+    "signOut": "Cerrar Sesión",
+    "welcome": "Bienvenido",
+    "email": "Correo electrónico",
+    "search": "Buscar",
+    "create": "Crear",
+    "dashboard": "Panel",
+    "delete": "Eliminar",
+    "save": "Guardar",
+    "loading": "Cargando...",
+    "remove": "Eliminar"
+  },
+  "dashboard": {
+    "searchAndShare": "Buscar y Compartir GIFs"
+  },
+  "create": {
+    "savedGifs": "Tus GIFs Guardados",
+    "addCaption": "Agregar Título",
+    "enterCaption": "Ingresa tu título...",
+    "saveCaption": "Guardar Título"
+  }
+} 
