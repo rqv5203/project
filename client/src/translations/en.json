@@ -15,15 +15,16 @@
     "delete": "Delete",
     "save": "Save",
     "loading": "Loading...",
-    "remove": "Remove"
+    "remove": "Remove",
+    "profile": "Profile"
   },
   "dashboard": {
-    "searchAndShare": "Search and Share GIFs"
+    "weatherForecast": "Weather Forecast"
   },
   "create": {
-    "savedGifs": "Your Saved GIFs",
-    "addCaption": "Add Caption",
-    "enterCaption": "Enter your caption...",
-    "saveCaption": "Save Caption"
+    "savedLocations": "Your Saved Locations",
+    "addNote": "Add Note",
+    "enterNote": "Enter your note...",
+    "saveNote": "Save Note"
   }
 } 
