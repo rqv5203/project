@@ -6,14 +6,30 @@ import { useTranslation } from 'react-i18next';
 const WeatherSearch = ({ user }) => {
   const [location, setLocation] = useState('');
   const [weatherData, setWeatherData] = useState(null);
+  const [historicalData, setHistoricalData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [tempUnit, setTempUnit] = useState('celsius'); // 'celsius' or 'fahrenheit'
   const { t } = useTranslation();
 
   // Open-Meteo API base URL
   const WEATHER_API_URL = 'https://api.open-meteo.com/v1/forecast';
+  const HISTORICAL_API_URL = 'https://archive-api.open-meteo.com/v1/archive';
   const GEOCODING_API_URL = 'https://geocoding-api.open-meteo.com/v1/search';
+
+  const convertTemp = (temp) => {
+    if (tempUnit === 'fahrenheit') {
+      return Math.round((temp * 9/5) + 32);
+    }
+    return Math.round(temp);
+  };
+
+  const toggleTempUnit = () => {
+    setTempUnit(prev => prev === 'celsius' ? 'fahrenheit' : 'celsius');
+  };
 
   // Get user's current location on component mount
   useEffect(() => {
@@ -41,6 +57,7 @@ const WeatherSearch = ({ user }) => {
 
     setLoading(true);
     setError(null);
+    setHistoricalData(null);
 
     try {
       // First, geocode the location to get coordinates
@@ -104,6 +121,53 @@ const WeatherSearch = ({ user }) => {
     } catch (err) {
       setError('Failed to fetch weather data. Please try again.');
       console.error('Error fetching weather:', err);
+    }
+  };
+
+  const fetchHistoricalData = async (latitude, longitude) => {
+    if (!startDate || !endDate) return;
+    
+    try {
+      const historicalResponse = await axios.get(HISTORICAL_API_URL, {
+        params: {
+          latitude: latitude,
+          longitude: longitude,
+          start_date: startDate,
+          end_date: endDate,
+          daily: [
+            'weather_code',
+            'temperature_2m_max',
+            'temperature_2m_min',
+            'precipitation_sum',
+            'wind_speed_10m_max'
+          ].join(','),
+          timezone: 'auto'
+        }
+      });
+
+      setHistoricalData(historicalResponse.data);
+    } catch (err) {
+      setError('Failed to fetch historical weather data. Please try again.');
+      console.error('Error fetching historical weather:', err);
+    }
+  };
+
+  const handleDateRangeSubmit = async (e) => {
+    e.preventDefault();
+    if (!weatherData || !startDate || !endDate) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await fetchHistoricalData(
+        weatherData.latitude,
+        weatherData.longitude
+      );
+    } catch (err) {
+      setError('Failed to fetch historical data. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -176,6 +240,13 @@ const WeatherSearch = ({ user }) => {
             📍 Current Location
           </button>
         )}
+        <button 
+          onClick={toggleTempUnit}
+          className="temp-unit-toggle"
+          type="button"
+        >
+          {tempUnit === 'celsius' ? '°C → °F' : '°F → °C'}
+        </button>
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -187,9 +258,11 @@ const WeatherSearch = ({ user }) => {
           <div className="current-weather">
             <h2>{weatherData.locationName}</h2>
             <div className="current-temp">
-              <span className="temperature">{Math.round(weatherData.current.temperature_2m)}°C</span>
+              <span className="temperature">
+                {convertTemp(weatherData.current.temperature_2m)}°{tempUnit === 'celsius' ? 'C' : 'F'}
+              </span>
               <span className="feels-like">
-                Feels like {Math.round(weatherData.current.apparent_temperature)}°C
+                {t('weather.feelsLike')} {convertTemp(weatherData.current.apparent_temperature)}°{tempUnit === 'celsius' ? 'C' : 'F'}
               </span>
             </div>
             <div className="weather-description">
@@ -197,20 +270,20 @@ const WeatherSearch = ({ user }) => {
             </div>
             <div className="weather-details">
               <div className="detail-item">
-                <span className="label">Humidity:</span>
+                <span className="label">{t('weather.humidity')}:</span>
                 <span className="value">{weatherData.current.relative_humidity_2m}%</span>
               </div>
               <div className="detail-item">
-                <span className="label">Wind:</span>
+                <span className="label">{t('weather.wind')}:</span>
                 <span className="value">{Math.round(weatherData.current.wind_speed_10m)} km/h</span>
               </div>
               <div className="detail-item">
-                <span className="label">Cloud Cover:</span>
+                <span className="label">{t('weather.cloudCover')}:</span>
                 <span className="value">{weatherData.current.cloud_cover}%</span>
               </div>
               {weatherData.current.precipitation > 0 && (
                 <div className="detail-item">
-                  <span className="label">Precipitation:</span>
+                  <span className="label">{t('weather.precipitation')}:</span>
                   <span className="value">{weatherData.current.precipitation} mm</span>
                 </div>
               )}
@@ -218,7 +291,7 @@ const WeatherSearch = ({ user }) => {
           </div>
 
           <div className="forecast">
-            <h3>7-Day Forecast</h3>
+            <h3>{t('weather.sevenDayForecast')}</h3>
             <div className="forecast-grid">
               {weatherData.daily.time.map((date, index) => (
                 <div key={date} className="forecast-item">
@@ -227,8 +300,8 @@ const WeatherSearch = ({ user }) => {
                     {getWeatherDescription(weatherData.daily.weather_code[index])}
                   </div>
                   <div className="forecast-temps">
-                    <span className="high">{Math.round(weatherData.daily.temperature_2m_max[index])}°</span>
-                    <span className="low">{Math.round(weatherData.daily.temperature_2m_min[index])}°</span>
+                    <span className="high">{convertTemp(weatherData.daily.temperature_2m_max[index])}°</span>
+                    <span className="low">{convertTemp(weatherData.daily.temperature_2m_min[index])}°</span>
                   </div>
                   {weatherData.daily.precipitation_sum[index] > 0 && (
                     <div className="forecast-rain">
@@ -237,6 +310,62 @@ const WeatherSearch = ({ user }) => {
                   )}
                 </div>
               ))}
+            </div>
+
+            <div className="historical-weather">
+              <h3>{t('weather.historicalData')}</h3>
+              <form onSubmit={handleDateRangeSubmit} className="date-range-form">
+                <div className="date-inputs">
+                  <div className="date-input-group">
+                    <label htmlFor="start-date">{t('weather.startDate')}</label>
+                    <input
+                      type="date"
+                      id="start-date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      max={endDate || new Date().toISOString().split('T')[0]}
+                      required
+                    />
+                  </div>
+                  <div className="date-input-group">
+                    <label htmlFor="end-date">{t('weather.endDate')}</label>
+                    <input
+                      type="date"
+                      id="end-date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      min={startDate}
+                      required
+                    />
+                  </div>
+                </div>
+                <button type="submit" className="fetch-historical-button">
+                  {t('weather.fetchHistorical')}
+                </button>
+              </form>
+
+              {historicalData && (
+                <div className="historical-data-grid">
+                  {historicalData.daily.time.map((date, index) => (
+                    <div key={date} className="historical-item">
+                      <div className="historical-date">{formatDate(date)}</div>
+                      <div className="historical-weather">
+                        {getWeatherDescription(historicalData.daily.weather_code[index])}
+                      </div>
+                      <div className="historical-temps">
+                        <span className="high">{convertTemp(historicalData.daily.temperature_2m_max[index])}°</span>
+                        <span className="low">{convertTemp(historicalData.daily.temperature_2m_min[index])}°</span>
+                      </div>
+                      {historicalData.daily.precipitation_sum[index] > 0 && (
+                        <div className="historical-rain">
+                          {historicalData.daily.precipitation_sum[index].toFixed(1)} mm
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
