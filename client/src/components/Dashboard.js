@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import GiphySearch from './GiphySearch';
+import WeatherSearch from './WeatherSearch';
 import './Dashboard.css';
 
 function Dashboard({ user, onSignOut }) {
@@ -35,8 +35,8 @@ function Dashboard({ user, onSignOut }) {
       </div>
       
       <div className="dashboard-content">
-        <h2>{t('dashboard.searchAndShare')}</h2>
-        <GiphySearch user={user} />
+        <h2>{t('dashboard.weatherForecast')}</h2>
+        <WeatherSearch user={user} />
       </div>
     </div>
   );
