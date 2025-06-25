@@ -1,66 +1,71 @@
 openapi: 3.0.4
 info:
-  title: GIF Manager API
+  title: Weather Collection API
   description: |-
-    A RESTful API for managing user's saved GIFs. This API allows users to save, retrieve, update, and delete GIFs with authentication required for all operations.
+    A RESTful API for managing user's weather collections. This API allows users to save, retrieve, update, and delete weather collections with authentication required for all operations.
     
     ## Authentication
     All endpoints require authentication via JWT token passed in the Authorization header as Bearer token.
     
     ## Features
-    - Save GIFs with metadata (title, URL, preview, tags, caption)
-    - Retrieve user's saved GIFs
-    - Delete saved GIFs
-    - Update GIF captions
+    - Save weather collections with metadata (location, dates, weather data)
+    - Retrieve user's saved weather collections
+    - Delete saved weather collections
+    - Update weather collection titles
+    - Upload and manage photos for specific dates
   version: 1.0.0
   contact:
     name: API Support
-    email: support@gifmanager.com
+    email: support@weatherapp.com
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
 
 servers:
-  - url: http://localhost:3000/api/gifs
+  - url: http://localhost:3000/api
     description: Development server
-  - url: https://api.gifmanager.com/gifs
+  - url: https://api.weatherapp.com
     description: Production server
 
 tags:
-  - name: gifs
-    description: Operations for managing saved GIFs
+  - name: weather
+    description: Operations for managing weather collections
 
 paths:
-  /save:
+  /weather/save:
     post:
       tags:
-        - gifs
-      summary: Save a new GIF
-      description: Save a GIF to the user's collection with metadata including title, URL, preview, tags, and caption.
-      operationId: saveGif
+        - weather
+      summary: Save a weather collection
+      description: Save weather data for a specific date range with metadata including location, dates, and weather information.
+      operationId: saveWeatherCollection
       requestBody:
-        description: GIF data to be saved
+        description: Weather collection data to be saved
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SaveGifRequest'
+              $ref: '#/components/schemas/SaveWeatherCollectionRequest'
             example:
-              id: "gif_12345"
-              title: "Funny Cat GIF"
-              url: "https://media.giphy.com/media/abc123/giphy.gif"
-              preview: "https://media.giphy.com/media/abc123/200w.gif"
-              tags: ["cat", "funny", "pets"]
-              caption: "My favorite cat gif!"
+              title: "Vacation Weather"
+              startDate: "2024-01-01"
+              endDate: "2024-01-07"
+              location: "Paris, France"
+              weatherData:
+                daily:
+                  time: ["2024-01-01", "2024-01-02"]
+                  temperature_2m_max: [15.5, 18.2]
+                  temperature_2m_min: [8.1, 12.3]
+                  weather_code: [0, 2]
       responses:
         '201':
-          description: GIF successfully saved
+          description: Weather collection successfully saved
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SaveGifResponse'
+                $ref: '#/components/schemas/SaveWeatherCollectionResponse'
         '400':
-          description: Invalid input or failed to save GIF
+          description: Invalid input or failed to save weather collection
           content:
             application/json:
               schema:
@@ -74,17 +79,17 @@ paths:
       security:
         - bearerAuth: []
 
-  /user/{userId}:
+  /weather/user/{userId}:
     get:
       tags:
-        - gifs
-      summary: Get user's saved GIFs
-      description: Retrieve all GIFs saved by the authenticated user. Users can only access their own GIFs.
-      operationId: getUserGifs
+        - weather
+      summary: Get user's saved weather collections
+      description: Retrieve all weather collections saved by the authenticated user.
+      operationId: getUserWeatherCollections
       parameters:
         - name: userId
           in: path
-          description: User ID (email) to fetch GIFs for
+          description: User ID (email) to fetch weather collections for
           required: true
           schema:
             type: string
@@ -92,13 +97,13 @@ paths:
           example: "user@example.com"
       responses:
         '200':
-          description: Successfully retrieved user's GIFs
+          description: Successfully retrieved user's weather collections
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetUserGifsResponse'
+                $ref: '#/components/schemas/GetUserWeatherCollectionsResponse'
         '403':
-          description: Forbidden - User can only access their own GIFs
+          description: Forbidden - User can only access their own collections
           content:
             application/json:
               schema:
@@ -110,7 +115,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Internal server error - Failed to fetch GIFs
+          description: Internal server error - Failed to fetch collections
           content:
             application/json:
               schema:
@@ -118,32 +123,73 @@ paths:
       security:
         - bearerAuth: []
 
-  /{id}:
+  /weather/{id}:
+    get:
+      tags:
+        - weather
+      summary: Get a specific weather collection
+      description: Retrieve a specific weather collection by ID.
+      operationId: getWeatherCollection
+      parameters:
+        - name: id
+          in: path
+          description: Weather collection ID
+          required: true
+          schema:
+            type: string
+          example: "collection_12345"
+      responses:
+        '200':
+          description: Successfully retrieved weather collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetWeatherCollectionResponse'
+        '404':
+          description: Weather collection not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - User can only access their own collections
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearerAuth: []
     delete:
       tags:
-        - gifs
-      summary: Delete a saved GIF
-      description: Delete a GIF from the user's collection. Users can only delete their own GIFs.
-      operationId: deleteGif
+        - weather
+      summary: Delete a weather collection
+      description: Delete a weather collection. Users can only delete their own collections.
+      operationId: deleteWeatherCollection
       parameters:
         - name: id
           in: path
-          description: ID of the GIF to delete
+          description: ID of the weather collection to delete
           required: true
           schema:
             type: string
-          example: "gif_12345"
+          example: "collection_12345"
       responses:
         '204':
-          description: GIF successfully deleted
+          description: Weather collection successfully deleted
         '404':
-          description: GIF not found
+          description: Weather collection not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Forbidden - User can only delete their own GIFs
+          description: Forbidden - User can only delete their own collections
           content:
             application/json:
               schema:
@@ -154,60 +200,172 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error - Failed to delete GIF
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
       security:
         - bearerAuth: []
 
-  /{id}/caption:
+  /weather/{id}/title:
     put:
       tags:
-        - gifs
-      summary: Update GIF caption
-      description: Update the caption of a saved GIF. Users can only update captions for their own GIFs.
-      operationId: updateGifCaption
+        - weather
+      summary: Update weather collection title
+      description: Update the title of a weather collection. Users can only update their own collections.
+      operationId: updateWeatherCollectionTitle
       parameters:
         - name: id
           in: path
-          description: ID of the GIF to update
+          description: ID of the weather collection to update
           required: true
           schema:
             type: string
-          example: "gif_12345"
+          example: "collection_12345"
       requestBody:
-        description: New caption for the GIF
+        description: New title for the collection
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateCaptionRequest'
+              $ref: '#/components/schemas/UpdateTitleRequest'
             example:
-              caption: "Updated caption for my favorite GIF"
+              title: "My Amazing Vacation Weather"
       responses:
         '200':
-          description: Caption successfully updated
+          description: Title successfully updated
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
         '400':
-          description: Invalid input or failed to update caption
+          description: Invalid input or failed to update title
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: GIF not found
+          description: Weather collection not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Forbidden - User can only update their own GIFs
+          description: Forbidden - User can only update their own collections
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearerAuth: []
+
+  /weather/{id}/photo/{date}:
+    post:
+      tags:
+        - weather
+      summary: Upload photo for a specific date
+      description: Upload a photo for a specific date in a weather collection.
+      operationId: uploadWeatherPhoto
+      parameters:
+        - name: id
+          in: path
+          description: Weather collection ID
+          required: true
+          schema:
+            type: string
+          example: "collection_12345"
+        - name: date
+          in: path
+          description: Date for the photo (YYYY-MM-DD format)
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+      requestBody:
+        description: Photo file to upload
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo:
+                  type: string
+                  format: binary
+                  description: Photo file to upload
+      responses:
+        '200':
+          description: Photo successfully uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoUploadResponse'
+        '400':
+          description: Invalid input or failed to upload photo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Weather collection not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - User can only upload photos to their own collections
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearerAuth: []
+    delete:
+      tags:
+        - weather
+      summary: Remove photo for a specific date
+      description: Remove a photo for a specific date in a weather collection.
+      operationId: removeWeatherPhoto
+      parameters:
+        - name: id
+          in: path
+          description: Weather collection ID
+          required: true
+          schema:
+            type: string
+          example: "collection_12345"
+        - name: date
+          in: path
+          description: Date for the photo to remove (YYYY-MM-DD format)
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+      responses:
+        '200':
+          description: Photo successfully removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Weather collection not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - User can only remove photos from their own collections
           content:
             application/json:
               schema:
@@ -223,123 +381,6 @@ paths:
 
 components:
   schemas:
-    Gif:
-      type: object
-      required:
-        - id
-        - title
-        - url
-        - preview
-        - userId
-      properties:
-        id:
-          type: string
-          description: Unique identifier for the GIF
-          example: "gif_12345"
-        title:
-          type: string
-          description: Title of the GIF
-          example: "Funny Cat GIF"
-        url:
-          type: string
-          format: uri
-          description: Full URL of the GIF
-          example: "https://media.giphy.com/media/abc123/giphy.gif"
-        preview:
-          type: string
-          format: uri
-          description: Preview/thumbnail URL of the GIF
-          example: "https://media.giphy.com/media/abc123/200w.gif"
-        userId:
-          type: string
-          format: email
-          description: Email of the user who saved the GIF
-          example: "user@example.com"
-        tags:
-          type: array
-          description: Array of tags associated with the GIF
-          items:
-            type: string
-          example: ["cat", "funny", "pets"]
-        caption:
-          type: string
-          description: User-provided caption for the GIF
-          example: "My favorite cat gif!"
-
-    SaveGifRequest:
-      type: object
-      required:
-        - id
-        - title
-        - url
-        - preview
-      properties:
-        id:
-          type: string
-          description: Unique identifier for the GIF
-          example: "gif_12345"
-        title:
-          type: string
-          description: Title of the GIF
-          example: "Funny Cat GIF"
-        url:
-          type: string
-          format: uri
-          description: Full URL of the GIF
-          example: "https://media.giphy.com/media/abc123/giphy.gif"
-        preview:
-          type: string
-          format: uri
-          description: Preview/thumbnail URL of the GIF
-          example: "https://media.giphy.com/media/abc123/200w.gif"
-        tags:
-          type: array
-          description: Array of tags associated with the GIF
-          items:
-            type: string
-          example: ["cat", "funny", "pets"]
-        caption:
-          type: string
-          description: User-provided caption for the GIF
-          example: "My favorite cat gif!"
-
-    SaveGifResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        gif:
-          $ref: '#/components/schemas/Gif'
-
-    GetUserGifsResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        gifs:
-          type: array
-          items:
-            $ref: '#/components/schemas/Gif'
-
-    UpdateCaptionRequest:
-      type: object
-      required:
-        - caption
-      properties:
-        caption:
-          type: string
-          description: New caption for the GIF
-          example: "Updated caption for my favorite GIF"
-
-    SuccessResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-
     ErrorResponse:
       type: object
       properties:
@@ -349,7 +390,220 @@ components:
         error:
           type: string
           description: Error message describing what went wrong
-          example: "Failed to save GIF"
+          example: "Failed to save weather collection"
+
+    WeatherCollection:
+      type: object
+      required:
+        - id
+        - title
+        - userId
+        - startDate
+        - endDate
+        - location
+        - weatherData
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the weather collection
+          example: "collection_12345"
+        title:
+          type: string
+          description: Title of the weather collection
+          example: "Vacation Weather"
+        userId:
+          type: string
+          format: email
+          description: Email of the user who saved the collection
+          example: "user@example.com"
+        startDate:
+          type: string
+          format: date
+          description: Start date of the weather collection
+          example: "2024-01-01"
+        endDate:
+          type: string
+          format: date
+          description: End date of the weather collection
+          example: "2024-01-07"
+        location:
+          type: string
+          description: Location name for the weather collection
+          example: "Paris, France"
+        weatherData:
+          type: object
+          description: Weather data from Open-Meteo API
+          properties:
+            daily:
+              type: object
+              properties:
+                time:
+                  type: array
+                  items:
+                    type: string
+                    format: date
+                  example: ["2024-01-01", "2024-01-02"]
+                temperature_2m_max:
+                  type: array
+                  items:
+                    type: number
+                  example: [15.5, 18.2]
+                temperature_2m_min:
+                  type: array
+                  items:
+                    type: number
+                  example: [8.1, 12.3]
+                weather_code:
+                  type: array
+                  items:
+                    type: integer
+                  example: [0, 2]
+                precipitation_sum:
+                  type: array
+                  items:
+                    type: number
+                  example: [0.0, 2.5]
+                wind_speed_10m_max:
+                  type: array
+                  items:
+                    type: number
+                  example: [10.2, 15.8]
+        photos:
+          type: object
+          description: Photos associated with specific dates
+          additionalProperties:
+            type: string
+            format: uri
+          example:
+            "2024-01-01": "/uploads/photos/photo-123456.jpg"
+            "2024-01-02": "/uploads/photos/photo-789012.jpg"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the collection was created
+          example: "2024-01-01T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the collection was last updated
+          example: "2024-01-01T10:00:00Z"
+
+    SaveWeatherCollectionRequest:
+      type: object
+      required:
+        - startDate
+        - endDate
+        - location
+        - weatherData
+      properties:
+        title:
+          type: string
+          description: Title of the weather collection
+          example: "Vacation Weather"
+        startDate:
+          type: string
+          format: date
+          description: Start date of the weather collection
+          example: "2024-01-01"
+        endDate:
+          type: string
+          format: date
+          description: End date of the weather collection
+          example: "2024-01-07"
+        location:
+          type: string
+          description: Location name for the weather collection
+          example: "Paris, France"
+        weatherData:
+          type: object
+          description: Weather data from Open-Meteo API
+          properties:
+            daily:
+              type: object
+              properties:
+                time:
+                  type: array
+                  items:
+                    type: string
+                    format: date
+                temperature_2m_max:
+                  type: array
+                  items:
+                    type: number
+                temperature_2m_min:
+                  type: array
+                  items:
+                    type: number
+                weather_code:
+                  type: array
+                  items:
+                    type: integer
+                precipitation_sum:
+                  type: array
+                  items:
+                    type: number
+                wind_speed_10m_max:
+                  type: array
+                  items:
+                    type: number
+
+    SaveWeatherCollectionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        collection:
+          $ref: '#/components/schemas/WeatherCollection'
+
+    GetUserWeatherCollectionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        collections:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeatherCollection'
+
+    GetWeatherCollectionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        collection:
+          $ref: '#/components/schemas/WeatherCollection'
+
+    UpdateTitleRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          description: New title for the weather collection
+          example: "My Amazing Vacation Weather"
+
+    PhotoUploadResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        photoUrl:
+          type: string
+          format: uri
+          description: URL of the uploaded photo
+          example: "/uploads/photos/photo-123456.jpg"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
 
   securitySchemes:
     bearerAuth:

@@ -2,6 +2,7 @@ const { connectDB } = require('./db');
 const app = require('./app');
 const User = require('./models/User');
 const Gif = require('./models/Gif');
+const WeatherCollection = require('./models/WeatherCollection');
 
 const PORT = process.env.PORT || 3000;
 
@@ -10,6 +11,8 @@ connectDB().then(async () => {
    await User.createIndexes();
    // Create indexes for the gifs collection
    await Gif.createIndexes();
+   // Create indexes for the weather collections collection
+   await WeatherCollection.createIndexes();
    
    app.listen(PORT, () => {
       console.log(`server is running on port ${PORT}`);

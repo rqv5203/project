@@ -5,9 +5,10 @@ import './Create.css';
 
 const Create = ({ user }) => {
   const { t } = useTranslation();
-  const [savedGifs, setSavedGifs] = useState([]);
-  const [selectedGif, setSelectedGif] = useState(null);
-  const [caption, setCaption] = useState('');
+  const [weatherCollections, setWeatherCollections] = useState([]);
+  const [selectedCollection, setSelectedCollection] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -19,66 +20,139 @@ const Create = ({ user }) => {
   });
 
   useEffect(() => {
-    fetchSavedGifs();
+    fetchWeatherCollections();
   }, [user.email]);
 
-  const fetchSavedGifs = async () => {
+  const fetchWeatherCollections = async () => {
     try {
       setLoading(true);
-      const response = await authAxios.get(`http://localhost:3000/gifs/user/${user.email}`);
-      setSavedGifs(response.data.gifs);
+      const response = await authAxios.get(`http://localhost:3000/weather/user/${user.email}`);
+      setWeatherCollections(response.data.collections);
     } catch (err) {
-      setError('Failed to fetch saved GIFs. Please try again.');
-      console.error('Error fetching saved GIFs:', err);
+      setError('Failed to fetch weather collections. Please try again.');
+      console.error('Error fetching weather collections:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGifSelect = (gif) => {
-    setSelectedGif(gif);
-    setCaption(gif.caption || '');
+  const handleCollectionSelect = (collection) => {
+    setSelectedCollection(collection);
+    setTitle(collection.title || '');
+    setSelectedDate(null);
   };
 
-  const handleCaptionChange = (e) => {
-    setCaption(e.target.value);
+  const handleTitleChange = (e) => {
+    setTitle(e.target.value);
   };
 
-  const handleSaveCaption = async () => {
-    if (!selectedGif) return;
+  const handleSaveTitle = async () => {
+    if (!selectedCollection) return;
 
     try {
-      await authAxios.put(`http://localhost:3000/gifs/${selectedGif.id}/caption`, {
-        caption
+      await authAxios.put(`http://localhost:3000/weather/${selectedCollection.id}/title`, {
+        title
       });
 
       // Update local state
-      setSavedGifs(gifs => 
-        gifs.map(gif => 
-          gif.id === selectedGif.id ? { ...gif, caption } : gif
+      setWeatherCollections(collections => 
+        collections.map(collection => 
+          collection.id === selectedCollection.id ? { ...collection, title } : collection
         )
       );
 
+      setSelectedCollection(prev => ({ ...prev, title }));
       setError(null);
     } catch (err) {
-      setError('Failed to save caption. Please try again.');
-      console.error('Error saving caption:', err);
+      setError('Failed to save title. Please try again.');
+      console.error('Error saving title:', err);
     }
   };
 
-  const handleDeleteGif = async (gifId) => {
+  const handleDeleteCollection = async (collectionId) => {
     try {
-      await authAxios.delete(`http://localhost:3000/gifs/${gifId}`);
-      setSavedGifs(gifs => gifs.filter(gif => gif.id !== gifId));
-      if (selectedGif?.id === gifId) {
-        setSelectedGif(null);
-        setCaption('');
+      await authAxios.delete(`http://localhost:3000/weather/${collectionId}`);
+      setWeatherCollections(collections => collections.filter(collection => collection.id !== collectionId));
+      if (selectedCollection?.id === collectionId) {
+        setSelectedCollection(null);
+        setTitle('');
       }
       setError(null);
     } catch (err) {
-      setError('Failed to delete GIF. Please try again.');
-      console.error('Error deleting GIF:', err);
+      setError('Failed to delete collection. Please try again.');
+      console.error('Error deleting collection:', err);
     }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    if (!selectedCollection || !selectedDate) return;
+
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    try {
+      const response = await authAxios.post(
+        `http://localhost:3000/weather/${selectedCollection.id}/photo/${selectedDate}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      // Update local state
+      setSelectedCollection(prev => ({
+        ...prev,
+        photos: {
+          ...prev.photos,
+          [selectedDate]: response.data.photoUrl
+        }
+      }));
+
+      setError(null);
+    } catch (err) {
+      setError('Failed to upload photo. Please try again.');
+      console.error('Error uploading photo:', err);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getWeatherDescription = (weatherCode) => {
+    const weatherCodes = {
+      0: 'Clear sky',
+      1: 'Mainly clear',
+      2: 'Partly cloudy',
+      3: 'Overcast',
+      45: 'Fog',
+      48: 'Depositing rime fog',
+      51: 'Light drizzle',
+      53: 'Moderate drizzle',
+      55: 'Dense drizzle',
+      61: 'Slight rain',
+      63: 'Moderate rain',
+      65: 'Heavy rain',
+      71: 'Slight snow',
+      73: 'Moderate snow',
+      75: 'Heavy snow',
+      80: 'Slight rain showers',
+      81: 'Moderate rain showers',
+      82: 'Violent rain showers',
+      95: 'Thunderstorm',
+      96: 'Thunderstorm with slight hail',
+      99: 'Thunderstorm with heavy hail'
+    };
+    return weatherCodes[weatherCode] || 'Unknown';
   };
 
   if (loading) {
@@ -87,23 +161,26 @@ const Create = ({ user }) => {
 
   return (
     <div className="create-container">
-      <div className="saved-gifs">
-        <h2>{t('create.savedGifs')}</h2>
+      <div className="weather-collections">
+        <h2>Saved Weather Collections</h2>
         {error && <div className="error-message">{error}</div>}
-        <div className="gif-grid">
-          {savedGifs.map((gif) => (
+        <div className="collections-grid">
+          {weatherCollections.map((collection) => (
             <div 
-              key={gif.id} 
-              className={`gif-item ${selectedGif?.id === gif.id ? 'selected' : ''}`}
-              onClick={() => handleGifSelect(gif)}
+              key={collection.id} 
+              className={`collection-item ${selectedCollection?.id === collection.id ? 'selected' : ''}`}
+              onClick={() => handleCollectionSelect(collection)}
             >
-              <img src={gif.preview} alt={gif.title} />
-              {gif.caption && <div className="caption-preview">{gif.caption}</div>}
+              <div className="collection-info">
+                <h3>{collection.title}</h3>
+                <p>{collection.location}</p>
+                <p>{formatDate(collection.startDate)} - {formatDate(collection.endDate)}</p>
+              </div>
               <button 
                 className="delete-button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDeleteGif(gif.id);
+                  handleDeleteCollection(collection.id);
                 }}
               >
                 {t('common.delete')}
@@ -113,22 +190,74 @@ const Create = ({ user }) => {
         </div>
       </div>
 
-      {selectedGif && (
-        <div className="meme-editor">
-          <h2>{t('create.addCaption')}</h2>
-          <div className="selected-gif">
-            <img src={selectedGif.url} alt={selectedGif.title} />
-            {caption && <div className="caption-overlay">{caption}</div>}
+      {selectedCollection && (
+        <div className="collection-editor">
+          <div className="collection-header">
+            <h2>Edit Collection</h2>
+            <div className="title-editor">
+              <input
+                type="text"
+                value={title}
+                onChange={handleTitleChange}
+                placeholder="Collection title"
+                className="title-input"
+              />
+              <button onClick={handleSaveTitle} className="save-button">
+                Save Title
+              </button>
+            </div>
           </div>
-          <textarea
-            value={caption}
-            onChange={handleCaptionChange}
-            placeholder={t('create.enterCaption')}
-            className="caption-input"
-          />
-          <button onClick={handleSaveCaption} className="save-button">
-            {t('create.saveCaption')}
-          </button>
+
+          <div className="weather-days">
+            <h3>Weather Days</h3>
+            <div className="days-grid">
+              {selectedCollection.weatherData?.daily?.time?.map((date, index) => (
+                <div 
+                  key={date} 
+                  className={`day-item ${selectedDate === date ? 'selected' : ''}`}
+                  onClick={() => setSelectedDate(date)}
+                >
+                  <div className="day-date">{formatDate(date)}</div>
+                  <div className="day-weather">
+                    {getWeatherDescription(selectedCollection.weatherData.daily.weather_code[index])}
+                  </div>
+                  <div className="day-temps">
+                    <span className="high">{Math.round(selectedCollection.weatherData.daily.temperature_2m_max[index])}°</span>
+                    <span className="low">{Math.round(selectedCollection.weatherData.daily.temperature_2m_min[index])}°</span>
+                  </div>
+                  {selectedCollection.photos?.[date] && (
+                    <img 
+                      src={`http://localhost:3000${selectedCollection.photos[date]}`} 
+                      alt={`Weather on ${date}`}
+                      className="day-photo"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {selectedDate && (
+            <div className="photo-upload">
+              <h3>Add Photo for {formatDate(selectedDate)}</h3>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="photo-input"
+              />
+              {selectedCollection.photos?.[selectedDate] && (
+                <div className="current-photo">
+                  <h4>Current Photo:</h4>
+                  <img 
+                    src={`http://localhost:3000${selectedCollection.photos[selectedDate]}`} 
+                    alt={`Weather on ${selectedDate}`}
+                    className="preview-photo"
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

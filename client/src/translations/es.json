@@ -21,6 +21,18 @@
   "dashboard": {
     "weatherForecast": "Pronóstico del Tiempo"
   },
+  "weather": {
+    "sevenDayForecast": "Pronóstico de 7 Días",
+    "historicalData": "Datos Históricos del Tiempo",
+    "startDate": "Fecha de Inicio",
+    "endDate": "Fecha Final",
+    "fetchHistorical": "Obtener Datos Históricos",
+    "feelsLike": "Sensación térmica",
+    "humidity": "Humedad",
+    "wind": "Viento",
+    "cloudCover": "Nubosidad",
+    "precipitation": "Precipitación"
+  },
   "create": {
     "savedLocations": "Tus Ubicaciones Guardadas",
     "addNote": "Agregar Nota",

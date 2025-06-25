@@ -21,6 +21,18 @@
   "dashboard": {
     "weatherForecast": "Weather Forecast"
   },
+  "weather": {
+    "sevenDayForecast": "7-Day Forecast",
+    "historicalData": "Past Weather Data",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "fetchHistorical": "Get Past Weather Data",
+    "feelsLike": "Feels like",
+    "humidity": "Humidity",
+    "wind": "Wind",
+    "cloudCover": "Cloud Cover",
+    "precipitation": "Precipitation"
+  },
   "create": {
     "savedLocations": "Your Saved Locations",
     "addNote": "Add Note",
