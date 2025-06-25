@@ -145,10 +145,41 @@ const WeatherSearch = ({ user }) => {
         }
       });
 
+      console.log(latitude, longitude);
+      console.log(startDate, endDate);
+      console.log(historicalResponse.data);
+
       setHistoricalData(historicalResponse.data);
     } catch (err) {
       setError('Failed to fetch historical weather data. Please try again.');
       console.error('Error fetching historical weather:', err);
+    }
+  };
+
+  const saveWeatherCollection = async () => {
+    if (!historicalData || !user?.token) return;
+    
+    try {
+      const collectionData = {
+        title: `Weather Collection ${formatDate(startDate)} - ${formatDate(endDate)}`,
+        startDate: startDate,
+        endDate: endDate,
+        location: weatherData.locationName,
+        weatherData: historicalData
+      };
+
+      const authAxios = axios.create({
+        headers: {
+          'Authorization': `Bearer ${user?.token}`
+        }
+      });
+
+      await authAxios.post('http://localhost:3000/weather/save', collectionData);
+      setError(null);
+      alert('Weather collection saved successfully!');
+    } catch (err) {
+      setError('Failed to save weather collection. Please try again.');
+      console.error('Error saving weather collection:', err);
     }
   };
 
@@ -199,13 +230,15 @@ const WeatherSearch = ({ user }) => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric'
     });
   };
-
+  
   const handleCurrentLocation = () => {
     if (currentLocation) {
       setLoading(true);
@@ -346,24 +379,38 @@ const WeatherSearch = ({ user }) => {
               </form>
 
               {historicalData && (
-                <div className="historical-data-grid">
-                  {historicalData.daily.time.map((date, index) => (
-                    <div key={date} className="historical-item">
-                      <div className="historical-date">{formatDate(date)}</div>
-                      <div className="historical-weather">
-                        {getWeatherDescription(historicalData.daily.weather_code[index])}
-                      </div>
-                      <div className="historical-temps">
-                        <span className="high">{convertTemp(historicalData.daily.temperature_2m_max[index])}°</span>
-                        <span className="low">{convertTemp(historicalData.daily.temperature_2m_min[index])}°</span>
-                      </div>
-                      {historicalData.daily.precipitation_sum[index] > 0 && (
-                        <div className="historical-rain">
-                          {historicalData.daily.precipitation_sum[index].toFixed(1)} mm
+                <div className="historical-data-container">
+                  <div className="historical-data-header">
+                    <h4>Historical Weather Data</h4>
+                    {user?.token && (
+                      <button 
+                        onClick={saveWeatherCollection}
+                        className="save-collection-button"
+                        type="button"
+                      >
+                        Save Collection
+                      </button>
+                    )}
+                  </div>
+                  <div className="historical-data-grid">
+                    {historicalData.daily.time.map((date, index) => (
+                      <div key={date} className="historical-item">
+                        <div className="historical-date">{formatDate(date)}</div>
+                        <div className="historical-weather">
+                          {getWeatherDescription(historicalData.daily.weather_code[index])}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        <div className="historical-temps">
+                          <span className="high">{convertTemp(historicalData.daily.temperature_2m_max[index])}°</span>
+                          <span className="low">{convertTemp(historicalData.daily.temperature_2m_min[index])}°</span>
+                        </div>
+                        {historicalData.daily.precipitation_sum[index] > 0 && (
+                          <div className="historical-rain">
+                            {historicalData.daily.precipitation_sum[index].toFixed(1)} mm
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
