@@ -30,7 +30,7 @@ const Create = ({ user }) => {
       setWeatherCollections(response.data.collections);
     } catch (err) {
       setError('Failed to fetch weather collections. Please try again.');
-      console.error('Error fetching weather collections:', err);
+      //console.error('Error fetching weather collections:', err);
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ const Create = ({ user }) => {
       setError(null);
     } catch (err) {
       setError('Failed to save title. Please try again.');
-      console.error('Error saving title:', err);
+      //console.error('Error saving title:', err);
     }
   };
 
@@ -80,7 +80,7 @@ const Create = ({ user }) => {
       setError(null);
     } catch (err) {
       setError('Failed to delete collection. Please try again.');
-      console.error('Error deleting collection:', err);
+      //console.error('Error deleting collection:', err);
     }
   };
 
@@ -116,7 +116,7 @@ const Create = ({ user }) => {
       setError(null);
     } catch (err) {
       setError('Failed to upload photo. Please try again.');
-      console.error('Error uploading photo:', err);
+      //console.error('Error uploading photo:', err);
     }
   };
 

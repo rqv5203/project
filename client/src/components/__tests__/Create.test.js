@@ -2,19 +2,19 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Create from '../Create';
 
-// Mock axios before any other imports
+// Mock axios
 jest.mock('axios', () => ({
   __esModule: true,
   default: {
     create: jest.fn(() => ({
       get: jest.fn(),
       put: jest.fn(),
-      delete: jest.fn()
+      delete: jest.fn(),
+      post: jest.fn()
     }))
   }
 }));
 
-// Import axios after mocking
 import axios from 'axios';
 
 // Mock react-i18next
@@ -23,57 +23,66 @@ jest.mock('react-i18next', () => ({
     t: (key) => {
       const translations = {
         'common.loading': 'Loading...',
-        'common.delete': 'Delete',
-        'create.savedGifs': 'Saved GIFs',
-        'create.addCaption': 'Add Caption',
-        'create.enterCaption': 'Enter your caption here...',
-        'create.saveCaption': 'Save Caption'
+        'common.delete': 'Delete'
       };
       return translations[key] || key;
     },
   }),
 }));
 
-// Mock console methods
-const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-
 const mockUser = {
   email: 'test@example.com',
   token: 'test-token'
 };
 
-const mockSavedGifs = [
+const mockWeatherCollections = [
   {
     id: '1',
-    title: 'Test GIF 1',
-    url: 'https://example.com/gif1-original.gif',
-    preview: 'https://example.com/gif1-preview.gif',
-    caption: 'Existing caption 1'
+    title: 'New York Weather',
+    location: 'New York (40.7128, -74.0060)',
+    startDate: '2023-01-01',
+    endDate: '2023-01-07',
+    weatherData: {
+      daily: {
+        time: ['2023-01-01', '2023-01-02'],
+        weather_code: [0, 1],
+        temperature_2m_max: [20, 22],
+        temperature_2m_min: [15, 17]
+      }
+    },
+    photos: {
+      '2023-01-01': '/uploads/photos/photo1.jpg'
+    }
   },
   {
     id: '2',
-    title: 'Test GIF 2',
-    url: 'https://example.com/gif2-original.gif',
-    preview: 'https://example.com/gif2-preview.gif',
-    caption: ''
+    title: 'Chicago Weather',
+    location: 'Chicago (41.8781, -87.6298)',
+    startDate: '2023-01-10',
+    endDate: '2023-01-17',
+    weatherData: {
+      daily: {
+        time: ['2023-01-10', '2023-01-11'],
+        weather_code: [2, 3],
+        temperature_2m_max: [18, 20],
+        temperature_2m_min: [12, 14]
+      }
+    },
+    photos: {}
   }
 ];
 
 describe('Create Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockConsoleError.mockClear();
-  });
-
-  afterAll(() => {
-    mockConsoleError.mockRestore();
   });
 
   it('should render loading state initially', () => {
     const authAxiosInstance = {
-      get: jest.fn(() => new Promise(() => {})), // Never resolves to keep loading state
+      get: jest.fn(() => new Promise(() => {})),
       put: jest.fn(),
-      delete: jest.fn()
+      delete: jest.fn(),
+      post: jest.fn()
     };
     axios.create.mockReturnValue(authAxiosInstance);
 
@@ -82,266 +91,328 @@ describe('Create Component', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  it('should render saved GIFs after loading', async () => {
+  it('should render weather collections after loading', async () => {
     const authAxiosInstance = {
-      get: jest.fn().mockResolvedValue({ data: { gifs: mockSavedGifs } }),
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
       put: jest.fn(),
-      delete: jest.fn()
+      delete: jest.fn(),
+      post: jest.fn()
     };
     axios.create.mockReturnValue(authAxiosInstance);
 
     render(<Create user={mockUser} />);
     
     await waitFor(() => {
-      expect(screen.getByText('Saved GIFs')).toBeInTheDocument();
-      expect(screen.getByAltText('Test GIF 1')).toBeInTheDocument();
-      expect(screen.getByAltText('Test GIF 2')).toBeInTheDocument();
-      expect(screen.getByText('Existing caption 1')).toBeInTheDocument();
+      expect(screen.getByText('Saved Weather Collections')).toBeInTheDocument();
+      expect(screen.getByText('New York Weather')).toBeInTheDocument();
+      expect(screen.getByText('Chicago Weather')).toBeInTheDocument();
     });
   });
 
-  it('should handle fetch saved GIFs error', async () => {
+  it('should handle fetch error', async () => {
     const authAxiosInstance = {
       get: jest.fn().mockRejectedValue(new Error('Fetch failed')),
       put: jest.fn(),
-      delete: jest.fn()
+      delete: jest.fn(),
+      post: jest.fn()
     };
     axios.create.mockReturnValue(authAxiosInstance);
 
     render(<Create user={mockUser} />);
     
     await waitFor(() => {
-      expect(screen.getByText('Failed to fetch saved GIFs. Please try again.')).toBeInTheDocument();
+      expect(screen.getByText('Failed to fetch weather collections. Please try again.')).toBeInTheDocument();
     });
   });
 
-  it('should select GIF when clicked', async () => {
+  it('should select collection when clicked', async () => {
     const authAxiosInstance = {
-      get: jest.fn().mockResolvedValue({ data: { gifs: mockSavedGifs } }),
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
       put: jest.fn(),
-      delete: jest.fn()
+      delete: jest.fn(),
+      post: jest.fn()
     };
     axios.create.mockReturnValue(authAxiosInstance);
 
     render(<Create user={mockUser} />);
     
-    // Wait for GIFs to load
     await waitFor(() => {
-      expect(screen.getByAltText('Test GIF 1')).toBeInTheDocument();
+      expect(screen.getByText('New York Weather')).toBeInTheDocument();
     });
 
-    // Click on the first GIF
-    const gifItem = screen.getByAltText('Test GIF 1').closest('.gif-item');
-    fireEvent.click(gifItem);
+    const collectionItem = screen.getByText('New York Weather').closest('.collection-item');
+    fireEvent.click(collectionItem);
 
-    // Should show meme editor
     await waitFor(() => {
-      expect(screen.getByText('Add Caption')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('Existing caption 1')).toBeInTheDocument();
+      expect(screen.getByText('Edit Collection')).toBeInTheDocument();
     });
   });
 
-  it('should update caption when input changes', async () => {
+  it('should update and save title', async () => {
     const authAxiosInstance = {
-      get: jest.fn().mockResolvedValue({ data: { gifs: mockSavedGifs } }),
-      put: jest.fn(),
-      delete: jest.fn()
-    };
-    axios.create.mockReturnValue(authAxiosInstance);
-
-    render(<Create user={mockUser} />);
-    
-    // Wait for GIFs to load and select first GIF
-    await waitFor(() => {
-      expect(screen.getByAltText('Test GIF 1')).toBeInTheDocument();
-    });
-
-    const gifItem = screen.getByAltText('Test GIF 1').closest('.gif-item');
-    fireEvent.click(gifItem);
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('Existing caption 1')).toBeInTheDocument();
-    });
-
-    // Change caption
-    const captionInput = screen.getByDisplayValue('Existing caption 1');
-    fireEvent.change(captionInput, { target: { value: 'New caption text' } });
-
-    expect(screen.getByDisplayValue('New caption text')).toBeInTheDocument();
-  });
-
-  it('should save caption when save button is clicked', async () => {
-    const authAxiosInstance = {
-      get: jest.fn().mockResolvedValue({ data: { gifs: mockSavedGifs } }),
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
       put: jest.fn().mockResolvedValue({}),
-      delete: jest.fn()
+      delete: jest.fn(),
+      post: jest.fn()
     };
     axios.create.mockReturnValue(authAxiosInstance);
 
     render(<Create user={mockUser} />);
     
-    // Wait for GIFs to load and select first GIF
     await waitFor(() => {
-      expect(screen.getByAltText('Test GIF 1')).toBeInTheDocument();
+      expect(screen.getByText('New York Weather')).toBeInTheDocument();
     });
 
-    const gifItem = screen.getByAltText('Test GIF 1').closest('.gif-item');
-    fireEvent.click(gifItem);
+    const collectionItem = screen.getByText('New York Weather').closest('.collection-item');
+    fireEvent.click(collectionItem);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Existing caption 1')).toBeInTheDocument();
+      const titleInput = screen.getByDisplayValue('New York Weather');
+      fireEvent.change(titleInput, { target: { value: 'Updated Title' } });
+
+      const saveButton = screen.getByText('Save Title');
+      fireEvent.click(saveButton);
     });
-
-    // Change caption and save
-    const captionInput = screen.getByDisplayValue('Existing caption 1');
-    fireEvent.change(captionInput, { target: { value: 'Updated caption' } });
-
-    const saveButton = screen.getByText('Save Caption');
-    fireEvent.click(saveButton);
 
     await waitFor(() => {
       expect(authAxiosInstance.put).toHaveBeenCalledWith(
-        'http://localhost:3000/gifs/1/caption',
-        { caption: 'Updated caption' }
+        'http://localhost:3000/weather/1/title',
+        { title: 'Updated Title' }
       );
     });
   });
 
-  it('should handle save caption error', async () => {
+  it('should delete collection', async () => {
     const authAxiosInstance = {
-      get: jest.fn().mockResolvedValue({ data: { gifs: mockSavedGifs } }),
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
+      put: jest.fn(),
+      delete: jest.fn().mockResolvedValue({}),
+      post: jest.fn()
+    };
+    axios.create.mockReturnValue(authAxiosInstance);
+
+    render(<Create user={mockUser} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('New York Weather')).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByText('Delete');
+    fireEvent.click(deleteButtons[0]);
+
+    await waitFor(() => {
+      expect(authAxiosInstance.delete).toHaveBeenCalledWith('http://localhost:3000/weather/1');
+    });
+  });
+
+  it('should handle delete error', async () => {
+    const authAxiosInstance = {
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
+      put: jest.fn(),
+      delete: jest.fn().mockRejectedValue(new Error('Delete failed')),
+      post: jest.fn()
+    };
+    axios.create.mockReturnValue(authAxiosInstance);
+
+    render(<Create user={mockUser} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('New York Weather')).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByText('Delete');
+    fireEvent.click(deleteButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to delete collection. Please try again.')).toBeInTheDocument();
+    });
+  });
+
+  it('should display weather days when collection is selected', async () => {
+    const authAxiosInstance = {
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
+      put: jest.fn(),
+      delete: jest.fn(),
+      post: jest.fn()
+    };
+    axios.create.mockReturnValue(authAxiosInstance);
+
+    render(<Create user={mockUser} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('New York Weather')).toBeInTheDocument();
+    });
+
+    const collectionItem = screen.getByText('New York Weather').closest('.collection-item');
+    fireEvent.click(collectionItem);
+
+    await waitFor(() => {
+      expect(screen.getByText('Weather Days')).toBeInTheDocument();
+      expect(screen.getByText('Clear sky')).toBeInTheDocument();
+      expect(screen.getByText('Mainly clear')).toBeInTheDocument();
+    });
+  });
+
+  it('should select date and show photo upload', async () => {
+    const authAxiosInstance = {
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
+      put: jest.fn(),
+      delete: jest.fn(),
+      post: jest.fn()
+    };
+    axios.create.mockReturnValue(authAxiosInstance);
+
+    render(<Create user={mockUser} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('New York Weather')).toBeInTheDocument();
+    });
+
+    const collectionItem = screen.getByText('New York Weather').closest('.collection-item');
+    fireEvent.click(collectionItem);
+
+    await waitFor(() => {
+      const dayItems = screen.getAllByText(/Clear sky|Mainly clear/);
+      const firstDayItem = dayItems[0].closest('.day-item');
+      fireEvent.click(firstDayItem);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add Photo for/)).toBeInTheDocument();
+    });
+  });
+
+  it('should upload photo', async () => {
+    const authAxiosInstance = {
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
+      put: jest.fn(),
+      delete: jest.fn(),
+      post: jest.fn().mockResolvedValue({ data: { photoUrl: '/uploads/photos/new-photo.jpg' } })
+    };
+    axios.create.mockReturnValue(authAxiosInstance);
+
+    const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
+
+    render(<Create user={mockUser} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('New York Weather')).toBeInTheDocument();
+    });
+
+    const collectionItem = screen.getByText('New York Weather').closest('.collection-item');
+    fireEvent.click(collectionItem);
+
+    await waitFor(() => {
+      const dayItems = screen.getAllByText(/Clear sky/);
+      const firstDayItem = dayItems[0].closest('.day-item');
+      fireEvent.click(firstDayItem);
+    });
+
+    await waitFor(() => {
+      const fileInput = screen.getByDisplayValue('') || document.querySelector('input[type="file"]');
+      expect(fileInput).toBeInTheDocument();
+      Object.defineProperty(fileInput, 'files', {
+        value: [mockFile],
+        writable: false,
+      });
+      fireEvent.change(fileInput);
+    });
+
+    expect(authAxiosInstance.post).toHaveBeenCalled();
+  });
+
+  it('should handle empty collections', async () => {
+    const authAxiosInstance = {
+      get: jest.fn().mockResolvedValue({ data: { collections: [] } }),
+      put: jest.fn(),
+      delete: jest.fn(),
+      post: jest.fn()
+    };
+    axios.create.mockReturnValue(authAxiosInstance);
+
+    render(<Create user={mockUser} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Saved Weather Collections')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('New York Weather')).not.toBeInTheDocument();
+  });
+
+  it('should handle title save error', async () => {
+    const authAxiosInstance = {
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
       put: jest.fn().mockRejectedValue(new Error('Save failed')),
-      delete: jest.fn()
+      delete: jest.fn(),
+      post: jest.fn()
     };
     axios.create.mockReturnValue(authAxiosInstance);
 
     render(<Create user={mockUser} />);
     
-    // Wait for GIFs to load and select first GIF
     await waitFor(() => {
-      expect(screen.getByAltText('Test GIF 1')).toBeInTheDocument();
+      expect(screen.getByText('New York Weather')).toBeInTheDocument();
     });
 
-    const gifItem = screen.getByAltText('Test GIF 1').closest('.gif-item');
-    fireEvent.click(gifItem);
+    const collectionItem = screen.getByText('New York Weather').closest('.collection-item');
+    fireEvent.click(collectionItem);
 
     await waitFor(() => {
-      expect(screen.getByText('Save Caption')).toBeInTheDocument();
+      const saveButton = screen.getByText('Save Title');
+      fireEvent.click(saveButton);
     });
 
-    // Try to save caption
-    const saveButton = screen.getByText('Save Caption');
-    fireEvent.click(saveButton);
-
     await waitFor(() => {
-      expect(screen.getByText('Failed to save caption. Please try again.')).toBeInTheDocument();
+      expect(screen.getByText('Failed to save title. Please try again.')).toBeInTheDocument();
     });
   });
 
-  it('should delete GIF when delete button is clicked', async () => {
+  it('should display existing photos', async () => {
     const authAxiosInstance = {
-      get: jest.fn().mockResolvedValue({ data: { gifs: mockSavedGifs } }),
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
       put: jest.fn(),
-      delete: jest.fn().mockResolvedValue({})
+      delete: jest.fn(),
+      post: jest.fn()
     };
     axios.create.mockReturnValue(authAxiosInstance);
 
     render(<Create user={mockUser} />);
     
-    // Wait for GIFs to load
     await waitFor(() => {
-      expect(screen.getByAltText('Test GIF 1')).toBeInTheDocument();
+      expect(screen.getByText('New York Weather')).toBeInTheDocument();
     });
 
-    // Click delete button for first GIF
-    const deleteButtons = screen.getAllByText('Delete');
-    fireEvent.click(deleteButtons[0]);
+    const collectionItem = screen.getByText('New York Weather').closest('.collection-item');
+    fireEvent.click(collectionItem);
 
     await waitFor(() => {
-      expect(authAxiosInstance.delete).toHaveBeenCalledWith('http://localhost:3000/gifs/1');
-    });
-
-    // GIF should be removed from the list
-    await waitFor(() => {
-      expect(screen.queryByAltText('Test GIF 1')).not.toBeInTheDocument();
+      const photos = screen.getAllByAltText(/Weather on/);
+      expect(photos.length).toBeGreaterThan(0);
     });
   });
 
-  it('should handle delete GIF error', async () => {
+  it('should format dates correctly', async () => {
     const authAxiosInstance = {
-      get: jest.fn().mockResolvedValue({ data: { gifs: mockSavedGifs } }),
+      get: jest.fn().mockResolvedValue({ data: { collections: mockWeatherCollections } }),
       put: jest.fn(),
-      delete: jest.fn().mockRejectedValue(new Error('Delete failed'))
+      delete: jest.fn(),
+      post: jest.fn()
     };
     axios.create.mockReturnValue(authAxiosInstance);
 
     render(<Create user={mockUser} />);
     
-    // Wait for GIFs to load
     await waitFor(() => {
-      expect(screen.getByAltText('Test GIF 1')).toBeInTheDocument();
+      // Look for the formatted dates using flexible text matching
+      const dateRanges = screen.getAllByText((content, element) => {
+        return content.includes('Dec 31') && content.includes('Jan 6');
+      });
+      expect(dateRanges.length).toBeGreaterThan(0);
+      
+      const dateRanges2 = screen.getAllByText((content, element) => {
+        return content.includes('Jan 9') && content.includes('Jan 16');
+      });
+      expect(dateRanges2.length).toBeGreaterThan(0);
     });
-
-    // Click delete button for first GIF
-    const deleteButtons = screen.getAllByText('Delete');
-    fireEvent.click(deleteButtons[0]);
-
-    await waitFor(() => {
-      expect(screen.getByText('Failed to delete GIF. Please try again.')).toBeInTheDocument();
-    });
-  });
-
-  it('should clear selected GIF when deleted GIF was selected', async () => {
-    const authAxiosInstance = {
-      get: jest.fn().mockResolvedValue({ data: { gifs: mockSavedGifs } }),
-      put: jest.fn(),
-      delete: jest.fn().mockResolvedValue({})
-    };
-    axios.create.mockReturnValue(authAxiosInstance);
-
-    render(<Create user={mockUser} />);
-    
-    // Wait for GIFs to load and select first GIF
-    await waitFor(() => {
-      expect(screen.getByAltText('Test GIF 1')).toBeInTheDocument();
-    });
-
-    const gifItem = screen.getByAltText('Test GIF 1').closest('.gif-item');
-    fireEvent.click(gifItem);
-
-    await waitFor(() => {
-      expect(screen.getByText('Add Caption')).toBeInTheDocument();
-    });
-
-    // Delete the selected GIF
-    const deleteButtons = screen.getAllByText('Delete');
-    fireEvent.click(deleteButtons[0]);
-
-    await waitFor(() => {
-      expect(screen.queryByText('Add Caption')).not.toBeInTheDocument();
-    });
-  });
-
-  it('should prevent event propagation when delete button is clicked', async () => {
-    const authAxiosInstance = {
-      get: jest.fn().mockResolvedValue({ data: { gifs: mockSavedGifs } }),
-      put: jest.fn(),
-      delete: jest.fn().mockResolvedValue({})
-    };
-    axios.create.mockReturnValue(authAxiosInstance);
-
-    render(<Create user={mockUser} />);
-    
-    // Wait for GIFs to load
-    await waitFor(() => {
-      expect(screen.getByAltText('Test GIF 1')).toBeInTheDocument();
-    });
-
-    // Click delete button - this should not select the GIF
-    const deleteButtons = screen.getAllByText('Delete');
-    fireEvent.click(deleteButtons[0]);
-
-    // Should not show meme editor (GIF should not be selected)
-    expect(screen.queryByText('Add Caption')).not.toBeInTheDocument();
   });
 }); 

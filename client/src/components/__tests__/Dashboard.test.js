@@ -3,10 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Dashboard from '../Dashboard';
 
-// Mock the GiphySearch component
-jest.mock('../GiphySearch', () => {
-  return function MockGiphySearch({ user }) {
-    return <div data-testid="giphy-search">GiphySearch Component - User: {user?.email}</div>;
+// Mock the WeatherSearch component
+jest.mock('../WeatherSearch', () => {
+  return function MockWeatherSearch({ user }) {
+    return <div data-testid="weather-search">WeatherSearch Component - User: {user?.email}</div>;
   };
 });
 
@@ -19,7 +19,7 @@ jest.mock('react-i18next', () => ({
         'common.welcome': 'Welcome',
         'common.email': 'Email',
         'common.signOut': 'Sign Out',
-        'dashboard.searchAndShare': 'Search and Share GIFs'
+        'dashboard.weatherForecast': 'Weather Forecast'
       };
       return translations[key] || key;
     },
@@ -69,7 +69,7 @@ describe('Dashboard Component', () => {
     expect(screen.getByText('Welcome, John Doe!')).toBeInTheDocument();
     expect(screen.getByText('Email: john@example.com')).toBeInTheDocument();
     expect(screen.getByAltText('Profile')).toHaveAttribute('src', 'https://example.com/profile.jpg');
-    expect(screen.getByText('Search and Share GIFs')).toBeInTheDocument();
+    expect(screen.getByText('Weather Forecast')).toBeInTheDocument();
   });
 
   it('should render dashboard without profile picture when not provided', () => {
@@ -86,7 +86,7 @@ describe('Dashboard Component', () => {
     expect(screen.queryByAltText('Profile')).not.toBeInTheDocument();
   });
 
-  it('should render GiphySearch component with user prop', () => {
+  it('should render WeatherSearch component with user prop', () => {
     const mockUser = {
       name: 'John Doe',
       email: 'john@example.com',
@@ -95,9 +95,9 @@ describe('Dashboard Component', () => {
 
     renderDashboard({ user: mockUser });
 
-    const giphySearch = screen.getByTestId('giphy-search');
-    expect(giphySearch).toBeInTheDocument();
-    expect(giphySearch).toHaveTextContent('GiphySearch Component - User: john@example.com');
+    const weatherSearch = screen.getByTestId('weather-search');
+    expect(weatherSearch).toBeInTheDocument();
+    expect(weatherSearch).toHaveTextContent('WeatherSearch Component - User: john@example.com');
   });
 
   it('should call onSignOut and navigate when sign out button is clicked', () => {
