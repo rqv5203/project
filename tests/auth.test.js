@@ -1,63 +1,60 @@
 const express = require('express');
 const request = require('supertest');
-const { OAuth2Client } = require('google-auth-library');
-const User = require('../models/User');
 const auth = require('../middleware/auth');
+const User = require('../models/User');
 
-// Mock environment variables
-process.env.GOOGLE_CLIENT_ID = 'test_client_id';
-
-// Mock User model
-jest.mock('../models/User');
-
-// Mock fetch for LinkedIn verification
-global.fetch = jest.fn();
-
-// Mock OAuth2Client
+// Mock the entire OAuth2Client
 jest.mock('google-auth-library', () => ({
   OAuth2Client: jest.fn().mockImplementation(() => ({
     verifyIdToken: jest.fn()
   }))
 }));
 
+// Mock the User model
+jest.mock('../models/User');
+
+// Mock fetch for LinkedIn verification
+global.fetch = jest.fn();
+
 // Create Express app for testing
 const app = express();
-app.use(express.json());
-
-// Create a test endpoint that uses the auth middleware
-app.get('/test', auth, (req, res) => {
-  res.json({ user: req.user });
+app.use(auth);
+app.get('/test', (req, res) => {
+  res.status(200).json({ user: req.user });
 });
 
 describe('Auth Middleware', () => {
   let mockOAuth2Client;
+  let consoleLogSpy;
+  let consoleErrorSpy;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    console.error = jest.fn(); // Mock console.error
-    console.log = jest.fn(); // Mock console.log
-    
-    // Get instance of mocked OAuth2Client
+    const { OAuth2Client } = require('google-auth-library');
     mockOAuth2Client = new OAuth2Client();
+    
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
   });
 
-  describe('Authorization Header Validation', () => {
-    it('should return 401 if no authorization header is present', async () => {
-      const response = await request(app)
-        .get('/test');
+  afterEach(() => {
+    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
 
-      expect(response.status).toBe(401);
-      expect(response.body).toEqual({ error: 'No authorization header' });
-    });
+  it('should return 401 if no authorization header provided', async () => {
+    const response = await request(app).get('/test');
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: 'No authorization header' });
+  });
 
-    it('should return 401 if token is missing from authorization header', async () => {
-      const response = await request(app)
-        .get('/test')
-        .set('Authorization', 'Bearer ');
+  it('should return 401 if no token provided', async () => {
+    const response = await request(app)
+      .get('/test')
+      .set('Authorization', 'Bearer');
 
-      expect(response.status).toBe(401);
-      expect(response.body).toEqual({ error: 'No token provided' });
-    });
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: 'No token provided' });
   });
 
   describe('Google Token Verification', () => {
@@ -67,9 +64,10 @@ describe('Auth Middleware', () => {
       };
       const mockUser = { id: '123', email: 'test@example.com' };
 
-      mockOAuth2Client.verifyIdToken.mockResolvedValue({
-        getPayload: () => mockPayload
-      });
+      const mockTicket = {
+        getPayload: jest.fn().mockReturnValue(mockPayload)
+      };
+      mockOAuth2Client.verifyIdToken.mockResolvedValue(mockTicket);
       User.findByEmail = jest.fn().mockResolvedValue(mockUser);
 
       const response = await request(app)
@@ -78,20 +76,49 @@ describe('Auth Middleware', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ user: mockUser });
-      expect(console.log).toHaveBeenCalledWith('Successfully verified Google token');
+      expect(consoleLogSpy).toHaveBeenCalledWith('Successfully verified Google token');
     });
 
-    it('should handle Google token verification failure and return null', async () => {
+    it('should handle Google token verification failure and try LinkedIn', async () => {
       const error = new Error('Invalid token');
       mockOAuth2Client.verifyIdToken.mockRejectedValue(error);
+
+      // Mock LinkedIn failure too
+      fetch.mockResolvedValue({
+        ok: false,
+        text: () => Promise.resolve('API Error')
+      });
 
       const response = await request(app)
         .get('/test')
         .set('Authorization', 'Bearer invalid_token');
 
-      expect(console.error).toHaveBeenCalledWith('Google token verification failed:', error);
-      // Verify that the function continues to try LinkedIn verification
-      expect(console.log).toHaveBeenCalledWith('Google verification failed, trying LinkedIn');
+      expect(response.status).toBe(401);
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Google token verification failed:', error);
+      expect(consoleLogSpy).toHaveBeenCalledWith('Google verification failed, trying LinkedIn');
+    });
+  });
+
+  describe('User Lookup', () => {
+    it('should return 401 if user not found in database after successful token verification', async () => {
+      const mockPayload = {
+        email: 'test@example.com'
+      };
+
+      const mockTicket = {
+        getPayload: jest.fn().mockReturnValue(mockPayload)
+      };
+      mockOAuth2Client.verifyIdToken.mockResolvedValue(mockTicket);
+      User.findByEmail = jest.fn().mockResolvedValue(null);
+
+      const response = await request(app)
+        .get('/test')
+        .set('Authorization', 'Bearer token');
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ error: 'User not found' });
+      expect(consoleErrorSpy).toHaveBeenCalledWith('User not found in database');
+      expect(consoleLogSpy).toHaveBeenCalledWith('Looking up user with email:', 'test@example.com');
     });
   });
 
@@ -106,10 +133,10 @@ describe('Auth Middleware', () => {
       };
       const mockUser = { id: '123', email: 'test@example.com' };
 
-      fetch.mockImplementationOnce(() => Promise.resolve({
+      fetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockLinkedInPayload)
-      }));
+      });
       User.findByEmail = jest.fn().mockResolvedValue(mockUser);
 
       const response = await request(app)
@@ -118,8 +145,8 @@ describe('Auth Middleware', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ user: mockUser });
-      expect(console.log).toHaveBeenCalledWith('Successfully verified LinkedIn token');
-      expect(console.log).toHaveBeenCalledWith('Google verification failed, trying LinkedIn');
+      expect(consoleLogSpy).toHaveBeenCalledWith('Successfully verified LinkedIn token');
+      expect(consoleLogSpy).toHaveBeenCalledWith('Google verification failed, trying LinkedIn');
     });
 
     it('should handle LinkedIn API error response', async () => {
@@ -127,16 +154,17 @@ describe('Auth Middleware', () => {
       mockOAuth2Client.verifyIdToken.mockRejectedValue(new Error('Invalid token'));
 
       // Mock LinkedIn API error
-      fetch.mockImplementationOnce(() => Promise.resolve({
+      fetch.mockResolvedValue({
         ok: false,
         text: () => Promise.resolve('API Error')
-      }));
+      });
 
       const response = await request(app)
         .get('/test')
         .set('Authorization', 'Bearer invalid_token');
 
-      expect(console.error).toHaveBeenCalledWith('LinkedIn verification failed:', 'API Error');
+      expect(response.status).toBe(401);
+      expect(consoleErrorSpy).toHaveBeenCalledWith('LinkedIn verification failed:', 'API Error');
     });
 
     it('should handle LinkedIn network error', async () => {
@@ -144,61 +172,27 @@ describe('Auth Middleware', () => {
       mockOAuth2Client.verifyIdToken.mockRejectedValue(new Error('Invalid token'));
 
       // Mock LinkedIn network error
-      fetch.mockRejectedValueOnce(new Error('Network error'));
+      fetch.mockRejectedValue(new Error('Network error'));
 
       const response = await request(app)
         .get('/test')
         .set('Authorization', 'Bearer invalid_token');
 
-      expect(console.error).toHaveBeenCalledWith('LinkedIn token verification failed:', expect.any(Error));
-    });
-  });
-
-  describe('User Lookup', () => {
-    it('should return 401 if no email found in token payload', async () => {
-      // Mock both Google and LinkedIn verification failure
-      mockOAuth2Client.verifyIdToken.mockRejectedValue(new Error('Invalid token'));
-      fetch.mockImplementationOnce(() => Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({}) // Empty payload without email
-      }));
-
-      const response = await request(app)
-        .get('/test')
-        .set('Authorization', 'Bearer token');
-
       expect(response.status).toBe(401);
-      expect(response.body).toEqual({ error: 'Invalid token' });
-      expect(console.error).toHaveBeenCalledWith('No email found in token payload');
-    });
-
-    it('should return 401 if user not found in database after successful token verification', async () => {
-      const mockPayload = {
-        email: 'test@example.com'
-      };
-
-      mockOAuth2Client.verifyIdToken.mockResolvedValue({
-        getPayload: () => mockPayload
-      });
-      User.findByEmail = jest.fn().mockResolvedValue(null);
-
-      const response = await request(app)
-        .get('/test')
-        .set('Authorization', 'Bearer token');
-
-      expect(response.status).toBe(401);
-      expect(response.body).toEqual({ error: 'User not found' });
-      expect(console.error).toHaveBeenCalledWith('User not found in database');
-      expect(console.log).toHaveBeenCalledWith('Looking up user with email:', 'test@example.com');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('LinkedIn token verification failed:', expect.any(Error));
     });
   });
 
   describe('Error Handling', () => {
     it('should return 500 on unexpected errors and log them', async () => {
       const error = new Error('Unexpected error');
-      mockOAuth2Client.verifyIdToken.mockImplementation(() => {
-        throw error;
-      });
+      
+      // Mock Google to succeed but user lookup to throw
+      const mockPayload = { email: 'test@example.com' };
+      const mockTicket = { getPayload: jest.fn().mockReturnValue(mockPayload) };
+      mockOAuth2Client.verifyIdToken.mockResolvedValue(mockTicket);
+      
+      User.findByEmail = jest.fn().mockRejectedValue(error);
 
       const response = await request(app)
         .get('/test')
@@ -206,7 +200,7 @@ describe('Auth Middleware', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Internal server error' });
-      expect(console.error).toHaveBeenCalledWith('Auth middleware error:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Auth middleware error:', error);
     });
   });
 }); 

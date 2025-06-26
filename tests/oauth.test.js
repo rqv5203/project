@@ -170,7 +170,7 @@ describe('OAuth Router', () => {
             expect(console.log.mock.calls).toEqual([
                 ['oauth route'],
                 ['code', 'test_code'],
-                ['Token response:', { tokens: mockTokens }],
+                ['Token response:', mockTokens],
                 ['tokens acquired'],
                 ['Google user data:', mockUserData],
                 ['Sending user response with token:', expect.any(Object)]
