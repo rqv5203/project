@@ -234,7 +234,9 @@ const Create = ({ user }) => {
                   </div>
                   {selectedCollection.photos?.[date] && (
                     <img 
-                      src={selectedCollection.photos[date]}
+                      src={selectedCollection.photos[date].startsWith('http') 
+                        ? selectedCollection.photos[date] 
+                        : `${getApiBaseUrl()}${selectedCollection.photos[date]}`} 
                       alt={`Weather on ${date}`}
                       className="day-photo"
                     />
@@ -257,7 +259,9 @@ const Create = ({ user }) => {
                 <div className="current-photo">
                   <h4>Current Photo:</h4>
                   <img 
-                    src={selectedCollection.photos[selectedDate]}
+                    src={selectedCollection.photos[selectedDate].startsWith('http') 
+                      ? selectedCollection.photos[selectedDate] 
+                      : `${getApiBaseUrl()}${selectedCollection.photos[selectedDate]}`}
                     alt={`Weather on ${selectedDate}`}
                     className="preview-photo"
                   />

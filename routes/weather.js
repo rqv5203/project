@@ -9,12 +9,23 @@ const { uploadToGCS } = require('../services/storage');
 // Apply auth middleware to all routes
 router.use(auth);
 
-// Configure multer for memory storage
-const storage = multer.memoryStorage();
+// Configure multer for file uploads
+const storage = process.env.NODE_ENV === 'production' 
+  ? multer.memoryStorage() // Use memory storage for GCS
+  : multer.diskStorage({    // Use disk storage for local development
+      destination: function (req, file, cb) {
+          cb(null, 'uploads/photos/')
+      },
+      filename: function (req, file, cb) {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+          cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+      }
+  });
+
 const upload = multer({ 
     storage: storage,
     limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit for MongoDB storage
+        fileSize: 10 * 1024 * 1024 // 10MB limit
     },
     fileFilter: function (req, file, cb) {
         // Check if file is an image
@@ -138,29 +149,54 @@ router.put('/:id/title', async (req, res) => {
 // Upload photo for a specific date in a collection
 router.post('/:id/photo/:date', upload.single('photo'), async (req, res) => {
     try {
+        console.log('Starting photo upload process...');
+        
         const collection = await WeatherCollection.findById(req.params.id);
         if (!collection) {
+            console.log('Collection not found:', req.params.id);
             return res.status(404).json({ success: false, error: 'Weather collection not found' });
         }
         
         if (collection.userId !== req.user.email) {
+            console.log('Unauthorized access attempt by:', req.user.email);
             return res.status(403).json({ success: false, error: 'Unauthorized access' });
         }
 
         if (!req.file) {
+            console.log('No file provided in request');
             return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
-        // Convert image buffer to Base64
-        const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+        console.log('File received:', {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size
+        });
+
+        let photoUrl;
+        if (process.env.NODE_ENV === 'production') {
+            console.log('Uploading to GCS in production mode');
+            // Upload to Google Cloud Storage in production
+            const filename = `photos/${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(req.file.originalname)}`;
+            photoUrl = await uploadToGCS(req.file, filename);
+            console.log('Successfully uploaded to GCS:', photoUrl);
+        } else {
+            console.log('Using local storage in development mode');
+            // Use local file path in development
+            photoUrl = `/uploads/photos/${req.file.filename}`;
+        }
+
+        await WeatherCollection.updatePhoto(req.params.id, req.params.date, photoUrl);
+        console.log('Photo URL saved to database:', photoUrl);
         
-        // Save Base64 image to MongoDB
-        await WeatherCollection.updatePhoto(req.params.id, req.params.date, base64Image);
-        
-        res.status(200).json({ success: true, photoUrl: base64Image });
+        res.status(200).json({ success: true, photoUrl });
     } catch (error) {
-        console.error('Error uploading photo:', error);
-        res.status(400).json({ success: false, error: 'Failed to upload photo' });
+        console.error('Error in photo upload process:', error);
+        // Send more detailed error message in development
+        const errorMessage = process.env.NODE_ENV === 'development' 
+            ? `Failed to upload photo: ${error.message}`
+            : 'Failed to upload photo. Please try again.';
+        res.status(400).json({ success: false, error: errorMessage });
     }
 });
 
