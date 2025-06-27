@@ -1,7 +1,7 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: assignments-app
+  name: project-app
   annotations:
     run.googleapis.com/ingress: all
     run.googleapis.com/cpu-throttling: "true"
@@ -18,7 +18,7 @@ spec:
       containerConcurrency: 80
       timeoutSeconds: 300
       containers:
-      - image: gcr.io/PROJECT_ID/assignments-app:latest
+      - image: gcr.io/PROJECT_ID/project-app:latest
         ports:
         - containerPort: 3000
           name: http1
