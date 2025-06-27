@@ -4,20 +4,23 @@ const WeatherCollection = require('../models/WeatherCollection');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
+const { uploadToGCS } = require('../services/storage');
 
 // Apply auth middleware to all routes
 router.use(auth);
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/photos/')
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+const storage = process.env.NODE_ENV === 'production' 
+  ? multer.memoryStorage() // Use memory storage for GCS
+  : multer.diskStorage({    // Use disk storage for local development
+      destination: function (req, file, cb) {
+          cb(null, 'uploads/photos/')
+      },
+      filename: function (req, file, cb) {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+          cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+      }
+  });
 
 const upload = multer({ 
     storage: storage,
@@ -159,12 +162,21 @@ router.post('/:id/photo/:date', upload.single('photo'), async (req, res) => {
             return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
-        const photoUrl = `/uploads/photos/${req.file.filename}`;
+        let photoUrl;
+        if (process.env.NODE_ENV === 'production') {
+            // Upload to Google Cloud Storage in production
+            const filename = `photos/${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(req.file.originalname)}`;
+            photoUrl = await uploadToGCS(req.file, filename);
+        } else {
+            // Use local file path in development
+            photoUrl = `/uploads/photos/${req.file.filename}`;
+        }
+
         await WeatherCollection.updatePhoto(req.params.id, req.params.date, photoUrl);
         
         res.status(200).json({ success: true, photoUrl });
     } catch (error) {
-        //console.error('Error uploading photo:', error);
+        console.error('Error uploading photo:', error);
         res.status(400).json({ success: false, error: 'Failed to upload photo' });
     }
 });

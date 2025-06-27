@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/rqv5203/assignments#readme",
   "dependencies": {
+    "@google-cloud/storage": "^7.16.0",
     "@types/cors": "^2.8.18",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
