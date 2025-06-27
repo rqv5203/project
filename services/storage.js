@@ -17,7 +17,7 @@ try {
   throw error;
 }
 
-const bucketName = process.env.GOOGLE_CLOUD_STORAGE_BUCKET;
+const bucketName = 'weather-images-bucket';
 
 const uploadToGCS = async (file, filename) => {
   console.log('Starting GCS upload with bucket:', bucketName);
