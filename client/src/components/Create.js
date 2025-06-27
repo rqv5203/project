@@ -12,6 +12,13 @@ const Create = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const getApiBaseUrl = () => {
+    if (process.env.NODE_ENV === 'production') {
+      return window.location.origin;
+    }
+    return 'https://project-app-433167393412.us-central1.run.app' || 'http://localhost:3000';
+  };
+
   // Create axios instance with auth header
   const authAxios = axios.create({
     headers: {
@@ -26,7 +33,7 @@ const Create = ({ user }) => {
   const fetchWeatherCollections = async () => {
     try {
       setLoading(true);
-      const response = await authAxios.get(`http://localhost:3000/weather/user/${user.email}`);
+      const response = await authAxios.get(`${getApiBaseUrl()}/weather/user/${user.email}`);
       setWeatherCollections(response.data.collections);
     } catch (err) {
       setError('Failed to fetch weather collections. Please try again.');
@@ -50,7 +57,7 @@ const Create = ({ user }) => {
     if (!selectedCollection) return;
 
     try {
-      await authAxios.put(`http://localhost:3000/weather/${selectedCollection.id}/title`, {
+      await authAxios.put(`${getApiBaseUrl()}/weather/${selectedCollection.id}/title`, {
         title
       });
 
@@ -71,7 +78,7 @@ const Create = ({ user }) => {
 
   const handleDeleteCollection = async (collectionId) => {
     try {
-      await authAxios.delete(`http://localhost:3000/weather/${collectionId}`);
+      await authAxios.delete(`${getApiBaseUrl()}/weather/${collectionId}`);
       setWeatherCollections(collections => collections.filter(collection => collection.id !== collectionId));
       if (selectedCollection?.id === collectionId) {
         setSelectedCollection(null);
@@ -81,7 +88,7 @@ const Create = ({ user }) => {
     } catch (err) {
       setError('Failed to delete collection. Please try again.');
       //console.error('Error deleting collection:', err);
-    }
+    } 
   };
 
   const handlePhotoUpload = async (e) => {
@@ -95,14 +102,14 @@ const Create = ({ user }) => {
 
     try {
       const response = await authAxios.post(
-        `http://localhost:3000/weather/${selectedCollection.id}/photo/${selectedDate}`,
+        `${getApiBaseUrl()}/weather/${selectedCollection.id}/photo/${selectedDate}`,
         formData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         }
-      );
+        );
 
       // Update local state
       setSelectedCollection(prev => ({
