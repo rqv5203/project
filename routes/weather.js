@@ -149,35 +149,54 @@ router.put('/:id/title', async (req, res) => {
 // Upload photo for a specific date in a collection
 router.post('/:id/photo/:date', upload.single('photo'), async (req, res) => {
     try {
+        console.log('Starting photo upload process...');
+        
         const collection = await WeatherCollection.findById(req.params.id);
         if (!collection) {
+            console.log('Collection not found:', req.params.id);
             return res.status(404).json({ success: false, error: 'Weather collection not found' });
         }
         
         if (collection.userId !== req.user.email) {
+            console.log('Unauthorized access attempt by:', req.user.email);
             return res.status(403).json({ success: false, error: 'Unauthorized access' });
         }
 
         if (!req.file) {
+            console.log('No file provided in request');
             return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
+        console.log('File received:', {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size
+        });
+
         let photoUrl;
         if (process.env.NODE_ENV === 'production') {
+            console.log('Uploading to GCS in production mode');
             // Upload to Google Cloud Storage in production
             const filename = `photos/${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(req.file.originalname)}`;
             photoUrl = await uploadToGCS(req.file, filename);
+            console.log('Successfully uploaded to GCS:', photoUrl);
         } else {
+            console.log('Using local storage in development mode');
             // Use local file path in development
             photoUrl = `/uploads/photos/${req.file.filename}`;
         }
 
         await WeatherCollection.updatePhoto(req.params.id, req.params.date, photoUrl);
+        console.log('Photo URL saved to database:', photoUrl);
         
         res.status(200).json({ success: true, photoUrl });
     } catch (error) {
-        console.error('Error uploading photo:', error);
-        res.status(400).json({ success: false, error: 'Failed to upload photo' });
+        console.error('Error in photo upload process:', error);
+        // Send more detailed error message in development
+        const errorMessage = process.env.NODE_ENV === 'development' 
+            ? `Failed to upload photo: ${error.message}`
+            : 'Failed to upload photo. Please try again.';
+        res.status(400).json({ success: false, error: errorMessage });
     }
 });
 
