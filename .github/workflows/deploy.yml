@@ -1,0 +1,136 @@
+name: CI/CD Pipeline - Monolithic Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - containerization
+  pull_request:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: project-app
+  REGION: us-central1
+  IMAGE_NAME: gcr.io/${{ secrets.GCP_PROJECT_ID }}/project-app
+  # Alternative for Artifact Registry:
+  # IMAGE_NAME: ${{ secrets.GCP_PROJECT_ID }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/cloud-run-source-deploy/project-app
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Install backend dependencies
+        run: npm ci
+      
+      - name: Install frontend dependencies
+        run: |
+          cd client
+          npm ci --legacy-peer-deps
+      
+      # - name: Run backend tests
+      #   run: npm run test:backend
+      
+      # - name: Run frontend tests
+      #   run: |
+      #     cd client
+      #     npm run test:coverage
+      
+      # - name: Upload test coverage reports
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: coverage-reports
+      #     path: |
+      #       coverage/
+      #       client/coverage/
+      #     retention-days: 7
+
+  build-and-deploy:
+    name: Build and Deploy to Google Cloud
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/containerization'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate with Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+      
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker to use gcloud as a credential helper
+        run: gcloud auth configure-docker
+      
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg REACT_APP_GIPHY_KEY=${{ secrets.REACT_APP_GIPHY_KEY }} \
+            -t $IMAGE_NAME:$GITHUB_SHA .
+          docker tag $IMAGE_NAME:$GITHUB_SHA $IMAGE_NAME:latest
+      
+      - name: Push Docker image to Google Container Registry
+        run: |
+          docker push $IMAGE_NAME:$GITHUB_SHA
+          docker push $IMAGE_NAME:latest
+      
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          region: ${{ env.REGION }}
+          platform: managed
+          allow-unauthenticated: true
+          port: 3000
+          memory: 512Mi
+          cpu: 1
+          max-instances: 10
+          timeout: 300
+          env_vars: |
+            NODE_ENV=production
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            BACKEND_URL=${{ secrets.BACKEND_URL }}
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}
+            LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
+            REACT_APP_GIPHY_KEY=${{ secrets.REACT_APP_GIPHY_KEY }}
+            GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GOOGLE_CLOUD_STORAGE_BUCKET }}
+            GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}
+            GCP_SA_KEY=${{ secrets.GCP_SA_KEY }}
+      
+      - name: Get Cloud Run URL
+        id: get-url
+        run: |
+          echo "url=${{ steps.deploy.outputs.url }}" >> $GITHUB_OUTPUT
+          echo "Deployed to: ${{ steps.deploy.outputs.url }}"
+      
+      - name: Health Check
+        run: |
+          sleep 30
+          curl -f ${{ steps.get-url.outputs.url }}/health || exit 1
+          echo "Health check passed!"

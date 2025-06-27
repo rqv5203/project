@@ -2,7 +2,7 @@ console.log("Try programiz.pro");
 
 const { MongoClient } = require('mongodb');
 
-const uri = "mongodb://localhost:27017/rqv5203_project";
+const uri = process.env.MONGODB_URI;
 
 let db = null;
 

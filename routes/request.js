@@ -6,7 +6,9 @@ const {OAuth2Client} = require('google-auth-library');
 dotenv.config();
 
 router.post('/', async function (req, res, next) {
-    const redirectUrl = 'http://localhost:3000/oauth';
+    const redirectUrl = process.env.NODE_ENV === 'production' 
+        ? `${process.env.BACKEND_URL}/oauth`
+        : 'http://localhost:3000/oauth';
 
     const oAuth2Client = new OAuth2Client(
         process.env.GOOGLE_CLIENT_ID,

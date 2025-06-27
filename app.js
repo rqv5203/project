@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const {OAuth2Client} = require('google-auth-library');
 const rateLimit = require('express-rate-limit');
+const path = require('path')
 
 dotenv.config();
 
@@ -10,7 +11,7 @@ const cors = require('cors');
 
 // Configure CORS
 app.use(cors({
-  origin: 'http://localhost:3001', // You can specify allowed origins in your .env file
+  origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : 'http://localhost:3001',
   credentials: true // Enable credentials (cookies, authorization headers, etc.)
 }));
 
@@ -30,16 +31,30 @@ const limiter = rateLimit({
 // Apply the rate limiting middleware to all requests.
 app.use(limiter)
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
 var requestRoutes = require('./routes/request');
 var oauthRoutes = require('./routes/oauth');
 var linkedinRoutes = require('./routes/linkedin');
-var gifsRoutes = require('./routes/gifs');
 var weatherRoutes = require('./routes/weather');
 
 app.use('/request', requestRoutes);
 app.use('/oauth', oauthRoutes);
 app.use('/auth/linkedin', linkedinRoutes);
-app.use('/gifs', gifsRoutes);
 app.use('/weather', weatherRoutes);
+
+// Serve static files from the React app build (for monolithic deployment)
+if (process.env.NODE_ENV === 'production') {
+	app.use(express.static(path.join(__dirname, 'public')));
+  
+	// Catch all handler: send back React's index.html file for any non-API routes
+	app.get(/^(?!\/(?:health|request|oauth|auth)).*$/, (req, res) => {
+	  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+	});
+  }
+  
 
 module.exports = app;

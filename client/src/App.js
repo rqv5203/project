@@ -15,6 +15,13 @@ function App() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
+  const getApiBaseUrl = () => {
+    if (process.env.NODE_ENV === 'production') {
+      return window.location.origin;
+    }
+    return 'https://project-app-433167393412.us-central1.run.app' || 'http://localhost:3000';
+  };
+
   useEffect(() => {
     // Check URL parameters for authentication response
     const params = new URLSearchParams(window.location.search);
@@ -28,7 +35,7 @@ function App() {
   }, []);
 
   async function googleAuth() {
-    const response = await fetch('http://localhost:3000/request', {
+    const response = await fetch(`${getApiBaseUrl()}/request`, {
       method: 'post'
     });
     const data = await response.json();
@@ -36,7 +43,7 @@ function App() {
   }
 
   async function linkedinAuth() {
-    const response = await fetch('http://localhost:3000/auth/linkedin/request', {
+    const response = await fetch(`${getApiBaseUrl()}/auth/linkedin/request`, {
       method: 'post'
     });
     const data = await response.json();

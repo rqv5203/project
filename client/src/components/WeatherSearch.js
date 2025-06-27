@@ -15,6 +15,13 @@ const WeatherSearch = ({ user }) => {
   const [tempUnit, setTempUnit] = useState('celsius'); // 'celsius' or 'fahrenheit'
   const { t } = useTranslation();
 
+  const getApiBaseUrl = () => {
+    if (process.env.NODE_ENV === 'production') {
+      return window.location.origin;
+    }
+    return 'https://project-app-433167393412.us-central1.run.app' || 'http://localhost:3000';
+  };
+
   // Open-Meteo API base URL
   const WEATHER_API_URL = 'https://api.open-meteo.com/v1/forecast';
   const HISTORICAL_API_URL = 'https://archive-api.open-meteo.com/v1/archive';
@@ -174,7 +181,7 @@ const WeatherSearch = ({ user }) => {
         }
       });
 
-      await authAxios.post('http://localhost:3000/weather/save', collectionData);
+      await authAxios.post(`${getApiBaseUrl()}/weather/save`, collectionData);
       setError(null);
       alert('Weather collection saved successfully!');
     } catch (err) {
