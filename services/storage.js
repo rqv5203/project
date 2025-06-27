@@ -3,10 +3,10 @@ const { Storage } = require('@google-cloud/storage');
 let storage;
 try {
   // Initialize storage with credentials from environment
-  const credentials = JSON.parse(process.env.GCP_SA_KEY || '{}');
+
   storage = new Storage({
     projectId: process.env.GOOGLE_CLOUD_PROJECT,
-    credentials: credentials
+    credentials: process.env.GCP_SA_KEY
   });
   console.log('Storage initialized with project:', process.env.GOOGLE_CLOUD_PROJECT);
 } catch (error) {
