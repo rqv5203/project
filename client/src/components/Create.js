@@ -101,16 +101,15 @@ const Create = ({ user }) => {
     formData.append('photo', file);
 
     try {
-      const response = await axios.post(
+      const response = await authAxios.post(
         `${getApiBaseUrl()}/weather/${selectedCollection.id}/photo/${selectedDate}`,
         formData,
         {
           headers: {
-            'Authorization': `Bearer ${user?.token}`,
             'Content-Type': 'multipart/form-data',
           },
         }
-        );
+      );
 
       // Update local state
       setSelectedCollection(prev => ({
