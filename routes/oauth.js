@@ -23,7 +23,9 @@ router.get('/', async function(req, res, next) {
     }
 
     try {
-        const redirectUrl = 'http://localhost:3000/oauth';
+        const redirectUrl = process.env.NODE_ENV === 'production' 
+            ? `${process.env.BACKEND_URL}/oauth`
+            : 'http://localhost:3000/oauth';
         const oAuth2Client = new OAuth2Client(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET,
@@ -63,10 +65,17 @@ router.get('/', async function(req, res, next) {
             token: userResponse.token.substring(0, 20) + '...'
         });
         
-        res.redirect(`http://localhost:3001?success=true&user=${encodeURIComponent(JSON.stringify(userResponse))}`);
+        const frontendUrl = process.env.NODE_ENV === 'production' 
+            ? process.env.FRONTEND_URL || process.env.BACKEND_URL
+            : 'http://localhost:3001';
+        
+        res.redirect(`${frontendUrl}?success=true&user=${encodeURIComponent(JSON.stringify(userResponse))}`);
     } catch (error) {
         console.error('Error signing in with Google:', error);
-        res.redirect(`http://localhost:3001?success=false&error=${encodeURIComponent('Failed to authenticate with Google')}`);
+        const frontendUrl = process.env.NODE_ENV === 'production' 
+            ? process.env.FRONTEND_URL || process.env.BACKEND_URL
+            : 'http://localhost:3001';
+        res.redirect(`${frontendUrl}?success=false&error=${encodeURIComponent('Failed to authenticate with Google')}`);
     }
 });
 
