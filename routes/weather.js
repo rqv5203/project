@@ -176,8 +176,13 @@ router.post('/:id/photo/:date', upload.single('photo'), async (req, res) => {
         let photoUrl;
         if (process.env.NODE_ENV === 'production') {
             console.log('Uploading to GCS in production mode');
-            // Upload to Google Cloud Storage in production
-            const filename = `photos/${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(req.file.originalname)}`;
+            // Generate a safe filename using collection ID, date, and timestamp
+            const safeDate = req.params.date.replace(/[^0-9-]/g, '');
+            const timestamp = Date.now();
+            const extension = path.extname(req.file.originalname);
+            const filename = `photos/${collection.id}/${safeDate}-${timestamp}${extension}`;
+            
+            console.log('Generated filename:', filename);
             photoUrl = await uploadToGCS(req.file, filename);
             console.log('Successfully uploaded to GCS:', photoUrl);
         } else {
