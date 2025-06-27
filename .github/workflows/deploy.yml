@@ -11,9 +11,9 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  SERVICE_NAME: assignments-app
+  SERVICE_NAME: project-app
   REGION: us-central1
-  IMAGE_NAME: gcr.io/${{ secrets.GCP_PROJECT_ID }}/assignments-app
+  IMAGE_NAME: gcr.io/${{ secrets.GCP_PROJECT_ID }}/project-app
   # Alternative for Artifact Registry:
   # IMAGE_NAME: ${{ secrets.GCP_PROJECT_ID }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/cloud-run-source-deploy/assignments-app
 
