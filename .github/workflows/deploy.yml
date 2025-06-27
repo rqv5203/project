@@ -76,6 +76,11 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          access_token_lifetime: 3600s
+          create_credentials_file: true
+          export_environment_variables: true
       
       - name: Setup Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v2
@@ -87,6 +92,7 @@ jobs:
         run: |
           docker build \
             --build-arg REACT_APP_GIPHY_KEY=${{ secrets.REACT_APP_GIPHY_KEY }} \
+            --build-arg GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GOOGLE_CLOUD_STORAGE_BUCKET }} \
             -t $IMAGE_NAME:$GITHUB_SHA .
           docker tag $IMAGE_NAME:$GITHUB_SHA $IMAGE_NAME:latest
       
@@ -119,6 +125,7 @@ jobs:
             LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}
             LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
             REACT_APP_GIPHY_KEY=${{ secrets.REACT_APP_GIPHY_KEY }}
+            GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GOOGLE_CLOUD_STORAGE_BUCKET }}
       
       - name: Get Cloud Run URL
         id: get-url
