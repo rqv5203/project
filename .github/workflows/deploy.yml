@@ -119,6 +119,7 @@ jobs:
             LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}
             LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
             REACT_APP_GIPHY_KEY=${{ secrets.REACT_APP_GIPHY_KEY }}
+            GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GOOGLE_CLOUD_STORAGE_BUCKET }}
       
       - name: Get Cloud Run URL
         id: get-url

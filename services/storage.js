@@ -2,22 +2,14 @@ const { Storage } = require('@google-cloud/storage');
 
 let storage;
 try {
-  if (process.env.GCP_SA_KEY) {
-    const credentials = JSON.parse(process.env.GCP_SA_KEY);
-    storage = new Storage({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT,
-      credentials
-    });
-  } else {
-    console.warn('GCP_SA_KEY not found, falling back to default credentials');
-    storage = new Storage();
-  }
+  // Use application default credentials
+  storage = new Storage();
 } catch (error) {
   console.error('Error initializing Google Cloud Storage:', error);
   throw error;
 }
 
-const bucketName = 'weather-images-bucket';
+const bucketName = process.env.GOOGLE_CLOUD_STORAGE_BUCKET;
 
 const uploadToGCS = async (file, filename) => {
   console.log('Starting GCS upload with bucket:', bucketName);
