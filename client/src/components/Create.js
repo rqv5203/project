@@ -101,11 +101,12 @@ const Create = ({ user }) => {
     formData.append('photo', file);
 
     try {
-      const response = await authAxios.post(
+      const response = await axios.post(
         `${getApiBaseUrl()}/weather/${selectedCollection.id}/photo/${selectedDate}`,
         formData,
         {
           headers: {
+            'Authorization': `Bearer ${user?.token}`,
             'Content-Type': 'multipart/form-data',
           },
         }
