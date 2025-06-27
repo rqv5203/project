@@ -1,6 +1,7 @@
 const { connectDB } = require('./db');
 const app = require('./app');
 const User = require('./models/User');
+const Gif = require('./models/Gif');
 const WeatherCollection = require('./models/WeatherCollection');
 
 const PORT = process.env.PORT || 3000;
