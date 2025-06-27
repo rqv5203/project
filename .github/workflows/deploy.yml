@@ -85,9 +85,7 @@ jobs:
       
       - name: Build Docker image
         run: |
-          docker build \
-            --build-arg REACT_APP_GIPHY_KEY=${{ secrets.REACT_APP_GIPHY_KEY }} \
-            -t $IMAGE_NAME:$GITHUB_SHA .
+          docker build -t $IMAGE_NAME:$GITHUB_SHA .
           docker tag $IMAGE_NAME:$GITHUB_SHA $IMAGE_NAME:latest
       
       - name: Push Docker image to Google Container Registry
@@ -104,7 +102,7 @@ jobs:
           region: ${{ env.REGION }}
           platform: managed
           allow-unauthenticated: true
-          port: 3000
+          port: 8080
           memory: 512Mi
           cpu: 1
           max-instances: 10
@@ -118,7 +116,6 @@ jobs:
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}
             LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
-            REACT_APP_GIPHY_KEY=${{ secrets.REACT_APP_GIPHY_KEY }}
       
       - name: Get Cloud Run URL
         id: get-url

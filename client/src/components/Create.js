@@ -109,9 +109,9 @@ const Create = ({ user }) => {
             'Content-Type': 'multipart/form-data',
           },
         }
-        );
+      );
 
-      // Update local state
+      // Update local state with the signed URL
       setSelectedCollection(prev => ({
         ...prev,
         photos: {
@@ -125,6 +125,38 @@ const Create = ({ user }) => {
       setError('Failed to upload photo. Please try again.');
       //console.error('Error uploading photo:', err);
     }
+  };
+
+  // Function to refresh signed URL
+  const refreshSignedUrl = async (collectionId, date) => {
+    try {
+      const response = await authAxios.get(
+        `${getApiBaseUrl()}/weather/${collectionId}/photo/${date}/url`
+      );
+      return response.data.photoUrl;
+    } catch (err) {
+      //console.error('Error refreshing signed URL:', err);
+      return null;
+    }
+  };
+
+  // Function to get photo URL, refreshing if needed
+  const getPhotoUrl = async (collectionId, date, currentUrl) => {
+    // If URL is expired or about to expire (within 1 hour), refresh it
+    if (!currentUrl || currentUrl.includes('Expires=') && new URL(currentUrl).searchParams.get('Expires') < Date.now() + 3600000) {
+      const newUrl = await refreshSignedUrl(collectionId, date);
+      if (newUrl) {
+        setSelectedCollection(prev => ({
+          ...prev,
+          photos: {
+            ...prev.photos,
+            [date]: newUrl
+          }
+        }));
+        return newUrl;
+      }
+    }
+    return currentUrl;
   };
 
   const formatDate = (dateString) => {
@@ -234,9 +266,16 @@ const Create = ({ user }) => {
                   </div>
                   {selectedCollection.photos?.[date] && (
                     <img 
-                      src={`http://localhost:3000${selectedCollection.photos[date]}`} 
+                      src={selectedCollection.photos[date]}
                       alt={`Weather on ${date}`}
                       className="day-photo"
+                      onError={async (e) => {
+                        const newUrl = await getPhotoUrl(selectedCollection.id, date, selectedCollection.photos[date]);
+                        if (newUrl) {
+                          const img = e.target;
+                          img.src = newUrl;
+                        }
+                      }}
                     />
                   )}
                 </div>
@@ -257,9 +296,16 @@ const Create = ({ user }) => {
                 <div className="current-photo">
                   <h4>Current Photo:</h4>
                   <img 
-                    src={`http://localhost:3000${selectedCollection.photos[selectedDate]}`} 
+                    src={selectedCollection.photos[selectedDate]}
                     alt={`Weather on ${selectedDate}`}
                     className="preview-photo"
+                    onError={async (e) => {
+                      const newUrl = await getPhotoUrl(selectedCollection.id, selectedDate, selectedCollection.photos[selectedDate]);
+                      if (newUrl) {
+                        const img = e.target;
+                        img.src = newUrl;
+                      }
+                    }}
                   />
                 </div>
               )}

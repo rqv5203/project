@@ -3,24 +3,33 @@ const router = express.Router();
 const WeatherCollection = require('../models/WeatherCollection');
 const auth = require('../middleware/auth');
 const multer = require('multer');
+const { Storage } = require('@google-cloud/storage');
+const MulterGoogleCloudStorage = require('multer-cloud-storage');
 const path = require('path');
 
 // Apply auth middleware to all routes
 router.use(auth);
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/photos/')
-    },
-    filename: function (req, file, cb) {
+// Initialize Google Cloud Storage with credentials from environment variable
+const storage = new Storage({
+    credentials: JSON.parse(process.env.GCP_SA_KEY)
+});
+const bucketName = process.env.GOOGLE_CLOUD_STORAGE_BUCKET || 'your-bucket-name';
+const bucket = storage.bucket(bucketName);
+
+// Configure multer for Google Cloud Storage
+const cloudStorage = new MulterGoogleCloudStorage({
+    bucket: bucketName,
+    projectId: process.env.GOOGLE_CLOUD_PROJECT,
+    credentials: JSON.parse(process.env.GCP_SA_KEY),
+    filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+        cb(null, `photos/${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
     }
 });
 
-const upload = multer({ 
-    storage: storage,
+const upload = multer({
+    storage: cloudStorage,
     limits: {
         fileSize: 10 * 1024 * 1024 // 10MB limit
     },
@@ -33,6 +42,17 @@ const upload = multer({
         }
     }
 });
+
+// Generate signed URL for a file
+async function generateSignedUrl(filename) {
+    const file = bucket.file(filename);
+    const [url] = await file.getSignedUrl({
+        version: 'v4',
+        action: 'read',
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+    return url;
+}
 
 // Add error handling middleware for multer
 const handleMulterError = (err, req, res, next) => {
@@ -159,13 +179,45 @@ router.post('/:id/photo/:date', upload.single('photo'), async (req, res) => {
             return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
-        const photoUrl = `/uploads/photos/${req.file.filename}`;
-        await WeatherCollection.updatePhoto(req.params.id, req.params.date, photoUrl);
+        // Store the GCS path and generate a signed URL
+        const gcsPath = req.file.filename;
+        const signedUrl = await generateSignedUrl(gcsPath);
         
-        res.status(200).json({ success: true, photoUrl });
+        // Store both the GCS path and the signed URL
+        await WeatherCollection.updatePhoto(req.params.id, req.params.date, {
+            gcsPath,
+            signedUrl
+        });
+        
+        res.status(200).json({ success: true, photoUrl: signedUrl });
     } catch (error) {
         //console.error('Error uploading photo:', error);
         res.status(400).json({ success: false, error: 'Failed to upload photo' });
+    }
+});
+
+// Get signed URL for a photo
+router.get('/:id/photo/:date/url', auth, async (req, res) => {
+    try {
+        const collection = await WeatherCollection.findById(req.params.id);
+        if (!collection) {
+            return res.status(404).json({ success: false, error: 'Weather collection not found' });
+        }
+        
+        if (collection.userId !== req.user.email) {
+            return res.status(403).json({ success: false, error: 'Unauthorized access' });
+        }
+
+        const photo = collection.photos[req.params.date];
+        if (!photo || !photo.gcsPath) {
+            return res.status(404).json({ success: false, error: 'Photo not found' });
+        }
+
+        const signedUrl = await generateSignedUrl(photo.gcsPath);
+        res.status(200).json({ success: true, photoUrl: signedUrl });
+    } catch (error) {
+        //console.error('Error generating signed URL:', error);
+        res.status(400).json({ success: false, error: 'Failed to generate photo URL' });
     }
 });
 

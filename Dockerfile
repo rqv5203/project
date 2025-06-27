@@ -2,10 +2,6 @@
 # Stage 1: Build React frontend
 FROM node:18-alpine AS frontend-build
 
-# Accept build arguments for React environment variables
-ARG REACT_APP_GIPHY_KEY
-ENV REACT_APP_GIPHY_KEY=$REACT_APP_GIPHY_KEY
-
 WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci --legacy-peer-deps --only=production
@@ -38,12 +34,15 @@ RUN chown -R nodejs:nodejs /app
 
 USER nodejs
 
-# Expose port
-EXPOSE 3000
+# Use PORT environment variable with default to 8080
+ENV PORT=8080
+
+# Expose the port
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "const http = require('http'); http.get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); });"
+  CMD node -e "const http = require('http'); http.get('http://localhost:' + process.env.PORT + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); });"
 
 # Start the application
 CMD ["node", "server.js"] 
