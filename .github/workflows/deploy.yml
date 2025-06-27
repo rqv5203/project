@@ -121,6 +121,7 @@ jobs:
             REACT_APP_GIPHY_KEY=${{ secrets.REACT_APP_GIPHY_KEY }}
             GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GOOGLE_CLOUD_STORAGE_BUCKET }}
             GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}
+            GCP_SA_KEY=${{ secrets.GCP_SA_KEY }}
       
       - name: Get Cloud Run URL
         id: get-url

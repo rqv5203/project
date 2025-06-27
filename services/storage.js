@@ -2,10 +2,11 @@ const { Storage } = require('@google-cloud/storage');
 
 let storage;
 try {
-  // Initialize storage with explicit project ID
+  // Initialize storage with credentials from environment
+  const credentials = JSON.parse(process.env.GCP_SA_KEY || '{}');
   storage = new Storage({
     projectId: process.env.GOOGLE_CLOUD_PROJECT,
-    keyFilename: process.env.GCP_SA_KEY
+    credentials: credentials
   });
   console.log('Storage initialized with project:', process.env.GOOGLE_CLOUD_PROJECT);
 } catch (error) {
@@ -31,7 +32,9 @@ const uploadToGCS = async (file, filename) => {
 
   try {
     const bucket = storage.bucket(bucketName);
+    console.log('Accessing bucket:', bucketName);
     const blob = bucket.file(filename);
+    console.log('Created blob for file:', filename);
     
     // Create a write stream and pipe the file buffer to it
     const blobStream = blob.createWriteStream({
