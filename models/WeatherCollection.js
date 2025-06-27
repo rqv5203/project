@@ -10,7 +10,7 @@ class WeatherCollection {
         this.endDate = collectionData.endDate;
         this.location = collectionData.location;
         this.weatherData = collectionData.weatherData;
-        this.photos = collectionData.photos || {}; // Object with date as key and { gcsPath, signedUrl } as value
+        this.photos = collectionData.photos || {}; // Object with date as key and photo URL as value
         this.createdAt = collectionData.createdAt || new Date();
         this.updatedAt = collectionData.updatedAt || new Date();
     }
@@ -83,13 +83,13 @@ class WeatherCollection {
     }
 
     // Add or update photo for a specific date
-    static async updatePhoto(id, date, photoData) {
+    static async updatePhoto(id, date, photoUrl) {
         const db = getDB();
         return await db.collection('weatherCollections').updateOne(
             { id },
             { 
                 $set: { 
-                    [`photos.${date}`]: photoData,
+                    [`photos.${date}`]: photoUrl,
                     updatedAt: new Date()
                 }
             }

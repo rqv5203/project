@@ -25,7 +25,6 @@
   },
   "homepage": "https://github.com/rqv5203/assignments#readme",
   "dependencies": {
-    "@google-cloud/storage": "^7.16.0",
     "@types/cors": "^2.8.18",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -34,7 +33,6 @@
     "google-auth-library": "^9.15.1",
     "mongodb": "^6.16.0",
     "multer": "^2.0.1",
-    "multer-cloud-storage": "^4.1.0",
     "nodemon": "^3.1.10",
     "uuid": "^11.1.0"
   },
